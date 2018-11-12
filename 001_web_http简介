@@ -1,0 +1,66 @@
+技术原文摘自https://www.cnblogs.com/liuqingzheng/p/9506212.html
+
+# =============================================
+一、web应用
+Web应用程序是一种可以通过Web访问的应用程序，程序的最大好处是用户很容易访问应用程序，用户只需要有浏览器即可，不需要再安装其他软件
+应用程序有两种模式C/S、B/S。C/S是客户端/服务器端程序，也就是说这类程序一般独立运行。而B/S就是浏览器端/服务器端应用程序，这类应用程序一般借助IE等浏览器来运行。WEB应用程序一般是B/S模式。Web应用程序首先是“应用程序”，和用标准的程序语言，如C、C++等编写出来的程序没有什么本质上的不同。然而Web应用程序又有自己独特的地方，就是它是基于Web的，而不是采用传统方法运行的。换句话说，它是典型的浏览器/服务器架构的产物。
+二、HTTP协议
+1、HTTP协议简介：
+HTTP协议是Hyper Text Transfer Protocol（超文本传输协议）的缩写,是用于万维网（WWW:World Wide Web ）服务器与本地浏览器之间传输超文本的传送协议。
+2、HTTP协议特性：
+基于TCP/IP协议之上的应用层协议
+
+基于请求－响应模式
+
+HTTP协议规定,请求从客户端发出,最后服务器端响应该请求并 返回。换句话说,肯定是先从客户端开始建立通信的,服务器端在没有 接收到请求之前不会发送响应
+无状态保存
+HTTP是一种不保存状态,即无状态(stateless)协议。HTTP协议 自身不对请求和响应之间的通信状态进行保存。也就是说在HTTP这个 级别,协议对于发送过的请求或响应都不做持久化处理。
+无连接
+无连接的含义是限制每次连接只处理一个请求。服务器处理完客户的请求，并收到客户的应答后，即断开连接。采用这种方式可以节省传输时间。
+3、http请求协议与响应协议:
+请求报文的构成：（由"回车符，换行符"隔开）
+
+请求行
+请求头部
+请求数据
+4、请求方式：get与post请求
+GET提交的数据会放在URL之后，以?分割URL和传输数据，参数之间以&相连，如EditBook?name=test1&id=123456. POST方法是把提交的数据放在HTTP包的请求体中.
+GET提交的数据大小有限制（因为浏览器对URL的长度有限制），而POST方法提交的数据没有限制.
+GET与POST请求在服务端获取请求数据方式不同。
+5、响应协议
+01_响应格式.png
+
+三、URL简介
+统一资源定位符是对可以从互联网上得到的资源的位置和访问方法的一种简洁的表示，是互联网上标准资源的地址。互联网上的每个文件都有一个唯一的URL，它包含的信息指出文件的位置以及浏览器应该怎么处理它
+
+格式：
+
+协议：//IP:端口（80）/路径?name=lqz&age=18
+
+？之前的是请求路径，？之后的是请求数据部分
+
+四、web框架
+Web框架（Web framework）是一种开发框架，用来支持动态网站、网络应用和网络服务的开发。这大多数的web框架提供了一套开发和部署网站的方式，也为web行为提供了一套通用的方法。web框架已经实现了很多功能，开发人员使用框架提供的方法并且完成自己的业务逻辑，就能快速开发web应用了。浏览器和服务器的是基于HTTP协议进行通信的。也可以说web框架就是在以上十几行代码基础张扩展出来的，有很多简单方便使用的方法，大大提高了开发的效率。
+wsgiref模块
+from wsgiref.simple_server import make_server
+
+def mya(environ, start_response):
+    print(environ)
+    start_response('200 OK', [('Content-Type', 'text/html')])
+    if environ.get('PATH_INFO') == '/index':
+        with open('index.html','rb') as f:
+            data=f.read()
+
+    elif environ.get('PATH_INFO') == '/login':
+        with open('login.html', 'rb') as f:
+            data = f.read()
+    else:
+        data=b'<h1>Hello, web!</h1>'
+    return [data]
+
+if __name__ == '__main__':
+    myserver = make_server('', 8011, mya)
+    print('监听8010')
+    myserver.serve_forever()
+
+wsgiref简单应用
