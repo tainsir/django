@@ -1,0 +1,119 @@
+ORM单表操作
+一、数据迁移命令:
+# 只是对变化做一个记录,记录文件在app的migrations
+python3 manage.py makemigrations
+
+# 把更改提交到数据库
+python3 manage.py migrate
+
+# 查看那个没有提交到数据库
+python3 manage.py showmigrations
+# ===================================
+
+二、添加表纪录
+方式一：
+# create方法的返回值book_obj就是插入book表中的斗罗大陆这本书籍纪录对象
+book_obj=Book.objects.create(name="斗罗大陆",price=100,publish="唐门出版社",author="唐家三少")
+方式二：
+book_obj=Book(name="斗罗大陆",price=100,publish="唐门出版社",author="唐家三少")
+book_obj.save()
+# ===================================
+三、查询表纪录
+查询API
+# 查询所有结果  all()
+book_obj=models.Book.objects.all()
+
+# 返回与所给筛选条件相匹配的对象  filter()
+book_obj=models.Book.objects.filter(name='斗罗大陆').first()
+
+# 返回与所给筛选条件相匹配的对象，返回结果有且只有一个，如果符合筛选条件的对象超过一个或者没有都会抛出错误。  get()
+book_obj=models.Book.objects.get(name='斗罗大陆')
+
+# 返回与所给筛选条件不匹配的对象   exclude()
+book_obj= models.Book.objects.exclude(name='斗罗大陆')
+
+# 对查询结果进行排序  order_by() 
+book_obj=models.Book.objects.all().order_by('price')
+
+# 对查询结果进行反向排序 reverse()
+book_obj=models.Book.objects.all().order_by('price').reverse()
+# 对查询结果进行反向排序
+book_obj=models.Book.objects.all().order_by('-price')
+
+# 查询结果个数  count()
+book_obj=models.Book.objects.all().count()
+
+# 返回查询到的第一条数据  first()
+book_obj=models.Book.objects.filter(name='斗罗大陆').first()
+
+# 返回查询到的最后一条数据  last()
+book_obj=models.Book.objects.filter(name='斗罗大陆').last()
+
+# 如果QuerySet 对象包含数据，则返回True，否则返回False  exists()
+book_obj=models.Book.objects.filter(name='斗破苍穹').exists()
+
+# 返回得到的是一个 QuerySet 里面套字典   values()
+ book_obj=models.Book.objects.all().values('name')
+    
+# 返回得到的是一个 QuerySet 里面套元组   value_list()
+book_obj=models.Book.objects.all().value_list('name')
+
+# 从返回结果中剔除重复纪录 去重  distinct()
+book_obj=models.Book.objects.all().values('name').distinct()
+基于双下划线的模糊查询
+# 查询价格大于 89 的书
+book_obj = models.Book.objects.filter(price__gt='89')
+
+# 查询价格小于89 的书
+book_obj = models.Book.objects.filter(price__lt='89')
+
+# 小于等于
+book_obj = models.Book.objects.filter(price__lte='89')
+
+# 大于等于,
+book_obj = models.Book.objects.filter(price__gte='89')
+
+# ====================================================================
+
+# in 在XX中
+book_obj = models.Book.objects.filter(price__in=['23.8','89','100'])
+
+# range 在XX范围内 between and
+book_obj = models.Book.objects.filter(price__range=[50,100])
+
+# contains 查询名字有'%斗%'的书
+book_obj = models.Book.objects.filter(name__contains='斗')
+
+# icontains 查询名字带p的书,忽略大小写
+book_obj = models.Book.objects.filter(name__icontains='P')
+
+
+# startswith  以XX开头
+book_obj = models.Book.objects.filter(name__startswith='斗')
+
+# endswith
+book_obj = models.Book.objects.filter(name__endswith='陆')
+
+# 字段名__year 按年查询
+book_obj = models.Book.objects.filter(create_data__year='2012')
+# ===================================
+
+四、删除表纪录
+models.Book.objects.filter(name='斗罗大陆').delete()
+# 删除书名为"斗罗大陆"这本书
+# ===================================
+
+五、修改表纪录
+models.Book.objects.filter(name='斗罗大陆').update(price=120)
+# 修改书名为"斗罗大陆"这本书的价格为120
+# ===================================
+
+六、在Python脚本中调用Django环境
+import os
+if __name__ == '__main__':
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE","你的项目名.settings")
+    import django
+    # 启动django服务
+    django.setup()
+
+    from app01 import models
