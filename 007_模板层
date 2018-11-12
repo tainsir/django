@@ -1,0 +1,181 @@
+#模板层
+一、模版语法之变量
+1、变量的直接使用
+使用方法：{{ 变量名 }}
+# views.py
+def index(request):
+    name = 'lqz'
+    age = 18
+    ll = [1, 2, 'lqz', 'egon']
+    ll2=[]
+    dic2={}
+    tu = (1, 2, 3)
+    dic = {'name': 'lqz', 'age': 18, 'll': [1, 2, 4]}
+index.html：
+<h1>模板语言之变量</h1>
+<p>字符串:{{ name }}</p>
+<p>数字:{{ age }}</p>
+<p>列表:{{ ll }}</p>
+<p>元祖:{{ tu }}</p>
+<p>字典:{{ dic }}</p>
+# ================================
+
+2、函数及类的使用：
+# views.py
+def index(request):
+    # 函数
+    def test():
+        print('lqz')
+        return 'zhouxiang dsb'
+    # 类
+     class Person():
+        def __init__(self, name, age):
+            self.name = name
+            self.age = age
+        def get_name(self):
+            return self.name
+        @classmethod
+        def cls_test(cls):
+            return 'cls'
+        @staticmethod
+        def static_test():
+            return 'static'
+        # 模板里不支持带参数
+        def get_name_cs(self,ttt):
+            return self.name
+    lqz=Person('lqz',18)
+    egon=Person('egon',18)
+    person_list=[lqz,egon]
+    person_dic={'lqz':lqz}
+index.html：
+{# 只写函数名:相当于函数名(),执行该函数 #}
+<p>函数:{{ test }}</p>
+{# 对象内存地址 #}
+<p>对象:{{ lqz }}</p>
+<p>列表套对象:{{ person_list }}</p>
+<p>字典套对象:{{ person_dic }}</p>
+# ================================
+
+3、深度查询：
+index.html：
+<h1>深度查询</h1>
+<p>列表第0个值:{{ ll.0 }}</p>
+<p>列表第3个值:{{ ll.3 }}</p>
+<p>字典取值:{{ dic.name }}</p>
+<p>字典取列表值:{{ dic.ll }}</p>
+{# 再继续取值,继续点 #}
+<p>对象取数据属性:{{ lqz.name }}</p>
+<p>对象取绑定给对象的函数属性:{{ lqz.get_name }}</p>
+<p>对象取绑定给类的函数属性:{{ lqz.cls_test }}</p>
+<p>对象取静态方法:{{ lqz.static_test }}</p>
+<p>把对象列表中egon年龄取出来:{{ person_list.1.age }}</p>
+{# 拓展:不能调有参数的方法 #}
+{# 注意：句点符也可以用来引用对象的方法(无参数方法) #}
+<p>字符串的方法:{{ name.upper }}</p>
+二、模板之过滤器
+语法：{{第一个参数|过滤器名字:第二个参数}}
+{{obj|filter__name:param}}  变量名字|过滤器名称：变量
+常见过滤器：
+default:（默认值）
+
+# 如果一个变量是false或者为空，使用给定的默认值。否则，使用变量的值。例如：
+{{ value|default:"nothing" }}
+length:（长度）
+
+# 返回值的长度。它对字符串和列表都起作用。例如：
+{{ value|length }}
+# ps:value = ['a', 'b', 'c', 'd'] ，那么输出是 4
+filesizeformat：
+
+# 将值格式化为一个 “人类可读的” 文件尺寸 （例如 '13 KB', '4.1 MB', '102 bytes', 等等）。例如：
+{{ value|filesizeformat }}
+# 如果 value 是 123456789，输出将会是 117.7 MB。　　
+date:（时间）
+
+# 如果 value = datetime.datetime.now()
+{{ value|date:"Y-m-d" }}
+slice:（切片）
+
+# 如果 value="hello world"
+{{ value|slice:"2:-1" }}
+truncatechars: 参数 3 以上
+
+# 如果字符串字符多于指定的字符数量，那么会被截断。截断的字符串将以可翻译的省略号序列（“...”）结尾。
+# 参数：要截断的字符数，例如：
+{{ value|truncatechars:5 }}
+safe:
+
+Django的模板中会对HTML标签和JS等语法标签进行自动转义，原因显而易见，这样是为了安全。但是有的时候我们可能不希望这些HTML元素被转义，比如我们做一个内容管理系统，后台添加的文章中是经过修饰的，这些修饰可能是通过一个类似于FCKeditor编辑加注了HTML修饰符的文本，如果自动转义的话显示的就是保护HTML标签的源文件。为了在Django中关闭HTML的自动转义有两种方式，如果是一个单独的变量我们可以通过过滤器“|safe”的方式告诉Django这段代码是安全的不必转义。比如：
+# h1 = '<h1>你好</h1>'
+<p>过滤器之不用safe:{{ h1 }}</p>
+<p>过滤器之用safe:{{ h1|safe }}</p>
+其它过滤器（了解）
+https://www.cnblogs.com/liuqingzheng/articles/9509806.html
+
+
+# ===================================================================
+三、模版之标签
+语法：{% 标签 %}
+for标签
+
+forloop:对象(里面有好多东西:parentloop,last,first,counter....)忘记的话,自己打印一下
+empty:被循环的对象是空,才走它
+for循环可以嵌套,也可以用if
+# 遍历每一个元素：
+{% for person in person_list %}
+    <p>{{ person.name }}</p>
+{% endfor %}
+# for ... empty
+{% for person in person_list %}
+    <p>{{ person.name }}</p>
+{% empty %}
+    <p>sorry,no person here</p>
+{% endfor %}
+if 标签
+
+{% if %}会对一个变量求值，如果它的值是“True”（存在、不为空、且不是boolean类型的false值），对应的内容块会输出。
+
+{% if num > 100 or num < 0 %}
+    <p>无效</p>
+{% elif num > 80 and num < 100 %}
+    <p>优秀</p>
+{% else %}
+    <p>凑活吧</p>
+{% endif %}
+if语句支持 and 、or、==、>、<、!=、<=、>=、in、not in、is、is not判断。
+with :重命名,应用在变量名过长
+# ===================================================================
+
+四、自定义标签和过滤器
+标签不能用在if判断,过滤器,可以用在if判断
+自定义过滤器
+
+-1 先app是不是已经在setting中注册
+-2 在app下创建一个templatetags(****名字不能变***)的文件夹(模块)
+-3 在模块下创建一个py文件,名字随意:mytag.py
+-4 # 第一步,导入template
+    from django.template import Library
+    # 第二步,定义一个叫register的变量=template.Library()
+    register = Library()
+-5 写一个函数,用@register.filter(name='yyy')装饰一下(可以指定别名)
+    def str_add(str1, str2): #一定要有返回值
+        # 业务逻辑很复杂
+        return str1 + str2
+-6 在模板里:(新定定义的标签,过滤器,都要重启程序)
+        -{% load mytag %}
+        -{{'lqz'|str_add:'nb'}}
+ 
+# =====================================
+
+自定义标签
+
+-1-4:前4步,根过滤器的定义完全一样
+-5 只是装饰器不一样
+    @register.simple_tag()
+    def add_nb(value):
+        return value+'nb'
+-6 在模板里:(多个参数,以空格区分)
+    -{% load mytag %}
+    -{% add_nb 'lqz'%}
+
+
