@@ -1,0 +1,23 @@
+原图摘自https://www.jianshu.com/p/6ec522bc3236
+
+静态文件配置
+在工程目录下创建一个名为static的文件夹，如图：
+03_静态文件配置01.jpg
+在settings.py文件中添加一下命令：
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/2.1/howto/static-files/
+
+STATIC_URL = '/static/'
+
+
+STATICFILES_DIRS=[
+    os.path.join(BASE_DIR, 'static'),
+]
+
+03_静态文件配置02.jpg
+在static文件夹中可以放置一些静态文件，比如 css，js，img等
+使用方法如下：
+
+
+
