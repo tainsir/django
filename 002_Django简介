@@ -1,0 +1,23 @@
+一、安装下载Django
+1、下载Django
+方式一：在命令行输入：pip3 install django
+
+​ pip install django==1.11.9 -i http://pypi.hustunique.org/simple 指定版本号，指定国内镜像
+
+方式二：用pycharm安装
+
+方式三：用pycharm的Terminal的命令行安装
+
+
+2、创建一个django project
+django-admin.py startproject mysite
+当前目录下会生成mysite的工程，目录结构如下：
+
+02_目录结构.png
+manage.py ----- Django项目里面的工具，通过它可以调用django shell和数据库等。
+settings.py ---- 包含了项目的默认设置，包括数据库信息，调试标志以及其他一些工作的变量。
+urls.py ----- 负责把URL模式映射到应用程序。
+3、在mysite目录下创建应用
+python manage.py startapp blog
+4、启动django项目
+python manage.py runserver 8001
