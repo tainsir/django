@@ -1,0 +1,54 @@
+模板层
+一、模板层导入与继承
+模板导入：
+先码一个好看的模板
+
+语法：{% include '模板名称' %}
+
+模板继承：
+Django模版引擎中最强大也是最复杂的部分就是模版继承了。模版继承可以让您创建一个基本的“骨架”模版，它包含您站点中的全部元素，并且可以定义能够被子模版覆盖的 blocks 。
+使用方法：
+
+1、先写一个母版，留一个或多个可扩展区域（预留的区域越多，该母版可扩展性越强！）
+
+# 母版内，预留的区域
+{% block '母版名字' %}
+    母版的内容，子模版没有重写时，会被继承。
+{% endblock %}
+
+# ===========================
+
+2、在子模版中使用：
+
+{% extends '母版所在的文件名' %}
+
+{% block '母版名字' %}
+    重写母版的内容
+{% endblock %}
+# 在子模版中复用母版中的内容
+{{ block.super }}
+
+# ===========================
+二、静态文件相关
+1、写死静态文件
+<link rel="stylesheet" href="/static/css/mycss.css">
+缺点：
+​ 如果后续修改了关于static文件夹的相关配置，会导致静态文件路径报错！
+# ===========================
+
+2、使用 static标签函数
+{% load static %}
+<!-- 使用方法 -->
+<!-- static返回值,会拼上传参的路径 -->
+<link rel="stylesheet" href="{% static 'css/mycss.css' %}">
+某个文件多处被用到可以存为一个变量
+{% load static %}
+{% static "css/mycss.css" as my_css %}
+<link rel="stylesheet" href="{{ my_css }}">
+# ===========================
+
+3、使用 get_static_prefix 标签
+{%load static%}
+<!-- 使用方法 -->
+<!-- get_static_prefix返回值是:静态文件的地址,相当于/static/ -->
+{% get_static_prefix %}css/mycss.css
