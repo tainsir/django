@@ -1,0 +1,102 @@
+路由层
+一、简单配置
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+]
+第一个参数是正则表达式（如果要精准匹配：'^admin/$'）
+第二个参数是视图函数（ps：不用加括号）
+
+# ===================================================
+二、无名分组
+# settings.py 文件
+urlpatterns = [
+    url(r'^publish/([0-9]{4})/([0-9]{2})$', views.publish),
+]
+# views.py 文件
+def publish(request, mounth,year):
+    return HttpResponse
+按位置传参
+分组之后,会把分组出来的数据,当位置参数,传到视图函数,所以,视图函数需要定义形参
+
+# ===================================================
+
+三、有名分组
+# settings.py 文件
+urlpatterns = [
+    url(r'^publish/(?P<year>[0-9]{4})/(?P<mounth>[0-9]{2})/$', views.publish),
+]
+# views.py 文件
+def publish(request, mounth,year):
+    return HttpResponse
+按关键字传参
+有名分组之后,会把分组出来的数据,当关键字参数,传到视图函数,所以,视图函数需要定义形参,形参名字要跟分组的名字对应,与顺序无关
+
+# ===================================================
+四、反向解析
+1、先命名
+无参数:
+    url(r'^publish/$', views.publish,name='pub'),
+
+无名分组:
+    url(r'^publish/([0-9]{4})/([0-9]{2})/$',views.publish,name='pub'), 
+
+有名分组:
+    url(r'^publish/(?P<year>[0-9]{4})/(?P<mounth>[0-9]{2})/$',views.publish,name='pub'), 
+2、在模板层中
+无参数:
+    {% url 'pub' %}
+    
+无名分组的:
+    {% url 'pub' 2018 12 %}
+    
+有名分组:
+    {% url 'pub' 2018 12 %}  还可以 {% url 'pub' year=2018 mounth=12 %}
+3、在视图层
+from django.shortcuts import reverse
+# 视图函数内
+无参数:
+    url=reverse('pub')
+无名分组:
+    url=reverse('pub',args=(2018,12,))
+有名分组:
+    url=reverse('pub',args=(2018,12,)) 还可以 url=reverse('pub',kwargs={'year':2018,'mounth':12})
+
+# ===================================================
+
+五、路由分发
+1、在不同的app里创建urls.py
+2、在总路由中
+from django.conf.urls import include 
+urlpatterns = [
+    url(r'^blog/',include('blog.urls')),
+    url(r'^app01/',include('app01.urls')),
+]
+3、在不同的app的urls里配置路由关系
+！！！重点：总路由,不能加结束符$
+
+# ===================================================
+
+六、名称空间
+# 总路由
+urlpatterns = [
+    url(r'^blog/',include('blog.urls',namespace='blog')),
+]
+# 子路由:
+urlpatterns = [
+    url(r'^publish/$', views.publish,name='test'),
+]
+# 反向解析:
+    #视图层:
+    url = reverse('blog:test')
+    #模板层:
+    {% url 'app01:test'%}
+***一般不要用***
+# ===================================================
+
+七、伪静态
+# 路由:
+    url(r'^book/(?P<id>\d+.html)',views.book),
+# 访问:
+    http://127.0.0.1:8000/book/4.html
+            
+# 将自己的页面伪装成与html文件一样的静态文件
