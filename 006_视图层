@@ -1,0 +1,123 @@
+视图层
+一、HttpRequest对象
+# views.py文件
+def test(request):
+    print(type(request))
+    from django.core.handlers.wsgi import WSGIRequest
+    # 前台Post传过来的数据, 包装到POST字典中
+    print(request.POST)
+    # 前台浏览器窗口里携带的数据, 包装到GET字典中
+    print(request.GET)
+    # 前台请求的方式
+    print(request.method)
+    # post提交的数据, body体的内容
+    print(request.body)
+    # 取出请求的路径, 取不到数据部分
+    print(request.path)
+    # 取出请求的路径, 能取到数据部分
+    print(request.get_full_path())
+    print(request.META)
+    # post提交数据格式, 放到body体中
+    # name = lqz & age = 18 & sex = 1
+    return HttpResponse('ok')
+   
+# =========================================================
+二、HttpResponse对象
+# 导入
+from django.template import Template, Context
+# 三件套:render,HttpResponse,redirect
+# render函数原理:
+    temp=Template('<h1>{{ user }}</h1>') # html页面数据
+    con=Context({'user':'lqz'})
+    ret=temp.render(con)
+    print(ret)
+    # return render(request,'index.html')
+    return HttpResponse(ret)
+# =========================================================
+
+三、JsonResponse对象
+# 导入:from django.http import JsonResponse
+# 视图函数中:
+def test(request):
+    import json
+    # dic={'name':'lqz','age':18}
+    ll = ['name', 'age']
+    # 把字典转换成json格式,返回到前台
+    # return HttpResponse(json.dumps(dic))
+    # 把列表转换成json格式,返回到前台
+    # return HttpResponse(json.dumps(ll))
+    # 把字典转换成json格式,返回到前台
+    # return JsonResponse(dic)
+    # 报错,默认不支持列表形式
+    # return JsonResponse(ll)
+    # 支持列表形式
+    return JsonResponse(ll,safe=False)
+    
+# =========================================================
+
+四、CBV 与 FBV
+CBV基于类的视图(Class base view)和FBV基于函数的视图（Function base view）
+# 基于类的视图
+# 路由层:
+url(r'^test/', views.Test.as_view()),
+# ======================================= # 
+# 视图层
+# 导入:
+from django.views import View
+# 写一个类:
+class Test(View):
+    def get(self, request):#一定要传request对象
+        return HttpResponse('get-test')
+
+    def post(self, request):
+        return HttpResponse('post-test')
+# 基于函数的视图   
+# =========================================================
+
+五、简单文件上传
+前端文件：file_upload.html
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>文件上传</title>
+</head>
+<body>
+<form action="" method="post" enctype="multipart/form-data">
+    <input type="file" name="my_file">
+    <input type="submit" value="提交">
+</form>
+</body>
+</html>
+后台文件：
+# urls.py
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    url(r'^file_upload/', views.file_upload),
+]
+
+# views.py
+from django.shortcuts import render, HttpResponse
+from work_04.settings import BASE_DIR
+import hashlib, time, os
+
+
+# Create your views here.
+
+
+def file_upload(request):
+    if request.method == 'GET':
+        return render(request, 'file_upload.html')
+    if request.method == 'POST':
+        my_file = request.FILES.get('my_file')
+        old_name = my_file.name
+        new_str = bytes(old_name + str(time.time()), encoding='utf-8')
+        m2 = hashlib.md5()
+        m2.update(new_str)
+        # 在根目录下创建一个media文件夹，拼接路径，将上传的文件保存到该文件夹下
+        new_name = os.path.join(BASE_DIR, 'media', m2.hexdigest() + '.jpg')
+        with open(new_name, 'wb') as f:
+            for line in my_file:
+                f.write(line)
+        return HttpResponse('ok')
+补充:编码方式multipart/form-data或者:application/x-www-form-urlencoded传的数据,都可以从POST中取出来
