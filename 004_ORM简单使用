@@ -1,0 +1,150 @@
+一、ORM介绍
+ORM即Object Relational Mapping，全称对象关系映射。
+1、使用ORM的优缺点
+优点：
+不用写sql,不会sql的人也可以写程序
+
+开发效率高
+
+缺点：
+可能sql的效率低
+2、使用方法
+在settings.py里配置:
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'HOST': '127.0.0.1',
+        'PORT': 3306,
+        'USER': 'root',      # 数据库用户
+        'PASSWORD': 'root',  # 数据库密码
+        'NAME': 'hgq', # 数据库名称（必须已经存在这个数据库）
+    }
+}
+在app对应文件夹下的_init_.py里写:
+import pymysql
+
+pymysql.install_as_MySQLdb()
+models.py文件中编写数据库中的表结构：
+from django.db import models
+
+# Create your models here.
+
+class User(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    pwd = models.CharField(max_length=32)
+数据库迁移
+#在cmd窗口中，切到工程所在目录下,输入以下命令
+
+python3 manage.py makemigrations  
+#记录一下数据库的变化记录一下数据库的变化
+
+python3 manage.py migrate      
+#将变化同步到数据库中
+
+# ================================================
+二、ORM简单使用
+1、修改表结构：
+修改models.py中已有字段的值
+# pwd = models.CharField(max_length=32)
+pwd = models.CharField(max_length=64)
+
+"""
+直接修改代码，并且重新执行 数据库迁移命令
+python3 manage.py makemigrations
+python3 manage.py migrate 
+"""
+  
+增加字段
+phone=models.CharField(max_length=64,default='120')
+"""
+直接在类中新定义一个字段
+注意：后来增加的字段，需要有默认值，或者设置默认为空 null=True
+    phone=models.CharField(max_length=64,default='120')
+"""
+删除字段
+"""
+删除类中相应字段，再执行命令即可
+注意：！！！
+在以后开发中删除字段需要经过慎重考虑，因为一个字段往往会由大量的数据，而删除该字段，该字段所对应的所有数据都会被删除
+"""
+2、字段类型介绍：
+自定义自增列：models.AutoField(primary_key=True)
+
+1、models.AutoField　　自增列 = int(11)
+　　如果没有的话，默认会生成一个名称为 id 的列，如果要显示的自定义一个自增列，必须将给列设置为主键 primary_key=True。
+　　
+2、models.CharField　　字符串字段
+　　必须 max_length 参数
+　　
+3、models.BooleanField　　布尔类型=tinyint(1)
+　　不能为空，Blank=True
+　　
+4、models.ComaSeparatedIntegerField　　用逗号分割的数字=varchar
+　　继承CharField，所以必须 max_lenght 参数
+　　
+5、models.DateField　　日期类型 date
+　　对于参数，auto_now = True 则每次更新都会更新这个时间；auto_now_add 则只是第一次创建添加，之后的更新不再改变。
+　　
+6、models.DateTimeField　　日期类型 datetime
+　　同DateField的参数
+　　
+7、models.Decimal　　十进制小数类型 = decimal
+　　必须指定整数位max_digits和小数位decimal_places
+　　
+8、models.EmailField　　字符串类型（正则表达式邮箱） =varchar
+　　对字符串进行正则表达式
+　　
+9、models.FloatField　　浮点类型 = double
+
+10、models.IntegerField　　整形
+
+11、models.BigIntegerField　　长整形
+　　integer_field_ranges = {
+　　　　'SmallIntegerField': (-32768, 32767),
+　　　　'IntegerField': (-2147483648, 2147483647),
+　　　　'BigIntegerField': (-9223372036854775808, 9223372036854775807),
+　　　　'PositiveSmallIntegerField': (0, 32767),
+　　　　'PositiveIntegerField': (0, 2147483647),
+　　}
+　　
+12、models.IPAddressField　　字符串类型（ip4正则表达式）(已弃用，用13、)
+
+13、models.GenericIPAddressField　　字符串类型（ip4和ip6是可选的）
+　　参数protocol可以是：both、ipv4、ipv6
+　　验证时，会根据设置报错
+　　
+14、models.NullBooleanField　　允许为空的布尔类型
+
+15、models.PositiveIntegerFiel　　正Integer
+
+16、models.PositiveSmallIntegerField　　正smallInteger
+
+17、models.SlugField　　减号、下划线、字母、数字
+
+18、models.SmallIntegerField　　数字
+　　数据库中的字段有：tinyint、smallint、int、bigint
+　　
+19、models.TextField　　字符串=longtext
+
+20、models.TimeField　　时间 HH:MM[:ss[.uuuuuu]]
+
+21、models.URLField　　字符串，地址正则表达式
+
+22、models.BinaryField　　二进制
+
+23、models.ImageField   图片
+
+24、models.FilePathField 文件
+3、字段参数介绍：
+null                # 是否可以为空
+default             # 默认值
+primary_key         # 主键
+db_column           # 列名
+db_index            # 索引(db_index=True)
+unique              # 唯一索引(unique=True)
+unique_for_date     # 只对日期索引
+unique_for_month    # 只对月份索引
+unique_for_year     # 只对年做索引
+auto_now            # 创建时，自动生成时间
+auto_now_add        # 更新时，自动更新为当前时间
