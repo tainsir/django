@@ -1,0 +1,45 @@
+摘自https://www.jianshu.com/p/ec8dc6c9dfde
+虚拟环境
+一、为什么要使用虚拟环境？
+需求：
+    - 公司之有一台服务器
+    - 目前运行这一个5年前开发的Django项目，基于1.5
+    - 现在要基于Django2.0开发一套程序
+    - 无法卸载原来的版本，必须还要安装新版本
+
+这个时候就要用到我们的虚拟环境了
+将该虚拟环境应用到某个项目中，那么该项目使用的就是你自己的单独安装的虚拟环境
+二、使用命令安装
+1、cmd窗口下：
+# cmd窗口下：
+    
+# 安装命令：
+pip3 install virtualenv
+
+# 查看版本号（验证是否安装成功）：
+virtualenv --version
+
+# 先通过命令切换路径到你想要安装虚拟环境的路径下：
+
+# 在该路径下创建虚拟环境：
+# PS：以下的 env_django 均是虚拟环境的文件夹名字
+    # 方式一：创建纯净的环境（没有任何模块）
+    virtualenv env_django
+    # 方式二：创建环境，并继承原安装的模块
+    virtualenv --system-site-packages env_django
+
+# 激活虚拟环境
+# 切换路径到  env_django目录下的Scripts文件夹中
+# 输入 activate
+# 激活成功后在命令行开头会出现 ==》（env_django）
+
+# 退出虚拟环境 ==》 deactivate
+2、在项目中使用虚拟环境
+files--settings--Project--Project Interpreter--add
+08_虚拟环境01.png
+选择虚拟环境路径下的python.exe即可
+08_虚拟环境02.png
+三、使用pycharm安装
+1、在Pycharm下创建 新建项目
+08_虚拟环境03.png
+！！！在项目中使用该虚拟环境方法与上面相同！！！
