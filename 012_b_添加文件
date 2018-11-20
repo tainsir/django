@@ -1,0 +1,63 @@
+# ===============================================
+View文件中：
+
+
+def add_file(request):
+    if request.method=='GET':
+        return render(request,'add_files.html')
+    # 这是个字典
+    dic_files=request.FILES
+    myfile=dic_files.get('myfile')
+    with open(myfile.name,'wb') as f:
+        # 循环上传过来的文件
+        for line in myfile:
+            # 往空文件中写
+            f.write(line)
+    return HttpResponse('ok')
+    
+# ===============================================
+Template中html文件
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="/static/jquery-3.3.1.js"></script>
+    <title>Title</title>
+</head>
+<body>
+<form action="/files/" method="post" enctype="multipart/form-data">
+    <p>用户名:<input type="text" name="name" id="name"></p>
+    <p><input type="file" name="myfile" id="myfile"></p>
+    <input type="submit" value="提交">
+</form>
+<button id="btn">ajax提交文件</button>
+
+</body>
+<script>
+    $("#btn").click(function () {
+        //上传文件,必须用FormData
+        var formdata=new FormData();
+        formdata.append('name',$("#name").val());
+        //取出文件$("#myfile")[0].files拿到的是文件列表,取第0个把具体的文件取出来
+        formdata.append('myfile',$("#myfile")[0].files[0]);
+
+        $.ajax({
+            url:'/files_ajax/',
+            type:'post',
+            //不预处理数据,(name=lqz&age=18)
+            processData:false,
+            //指定往后台传数据的编码格式(urlencoded,formdata,json)
+            //现在用formdata对象处理了,就不需要指定编码格式了,不要给我编码了
+            contentType:false,
+            data:formdata,
+            success:function (data) {
+                alert(data)
+
+            }
+        })
+
+    })
+
+</script>
+</html>
