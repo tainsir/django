@@ -1,0 +1,81 @@
+#========================================
+Views视图函数中
+
+
+def add_json(request):
+    if request.method=='GET':
+        return render(request,'json.html')
+    print(request.POST)
+    print(request.GET)
+    print(request.body)
+    import json
+    # res是个字典
+    res=json.loads(request.body.decode('utf-8'))
+    print(res)
+    print(type(res))
+    dic={'status':'100','msg':'登录成功'}
+    # return HttpResponse('ok')
+    # 返回给前台json格式
+    # return HttpResponse(json.dumps(dic))
+    return JsonResponse(dic)
+
+
+
+#========================================
+Template中json.html文件
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="/static/jquery-3.3.1.js"></script>
+    <title>Title</title>
+</head>
+<body>
+<form  >
+    <p>用户名:<input type="text" name="name" id="name"></p>
+
+    <p>密码:<input type="password" name="pwd" id="pwd"></p>
+
+    <input type="submit" value="提交">
+
+</form>
+
+<button id="btn">ajax提交json格式</button>
+</body>
+
+<script>
+    $('#btn').click(function () {
+        var post_data={'name':$("#name").val(),'pwd':$("#pwd").val()};
+        console.log(typeof post_data);
+        // 如何把post_data这个字典,转成json格式字符串
+        //JSON.stringify相当于python中json.dumps(post_data)
+        //pos是个字符串,json格式字符串
+        var pos=JSON.stringify(post_data);
+        console.log(typeof pos);
+        $.ajax({
+            url:'/json/',
+            type:'post',
+            data:pos,
+            contentType:'application/json',
+            dataType:'json',
+            success:function (data) {
+                //如果data是json格式字符串,如何转成对象(字典)?
+                //data=JSON.parse(data)
+                console.log(typeof data)
+                console.log(data.status)
+                /*
+                console.log(data)
+                var ret=JSON.parse(data)
+                console.log(typeof ret)
+                console.log(ret.status)
+                */
+
+                //alert(data)
+
+            }
+        })
+
+    })
+</script>
+</html>
