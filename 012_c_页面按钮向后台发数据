@@ -1,0 +1,61 @@
+# ===============================================
+view视图函数中
+
+def files_ajax(request):
+    # 提交文件从,request.FILES中取,提交的数据,从request.POST中取
+    name=request.POST.get('name')
+    print(name)
+    dic_files = request.FILES
+    myfile = dic_files.get('myfile')
+    with open(myfile.name, 'wb') as f:
+        # 循环上传过来的文件
+        for line in myfile:
+            # 往空文件中写
+            f.write(line)
+    return HttpResponse('ok')
+
+
+
+
+# ===============================================
+Template中index.html文件
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="/static/jquery-3.3.1.js"> </script>
+    <title>Title</title>
+</head>
+<body>
+<button class="btn">点我朝后台发数据</button>
+</body>
+<script>
+{#   取btn这个按钮#}
+    $(".btn").click(function () {
+        //alert(1)
+        /*
+        $.ajax({
+            //url:向后台发送请求的地址
+            url:'/index/?name=lqz',
+            //以什么方式发请求
+            type:'get'
+        })
+        */
+
+        $.ajax({
+            url:'/index/',
+            type:'post',
+            //data:往后台提交的数据
+            data:{'name':'lqz','age':18},
+            //成功的时候回调这个函数
+            success:function (data) {
+                alert(data)
+            }
+        })
+        alert('123')
+
+    })
+    
+</script>
+</html>
