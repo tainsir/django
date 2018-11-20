@@ -16,7 +16,7 @@ def add_file(request):
     return HttpResponse('ok')
     
 # ===============================================
-Template中html文件
+Template中add_files.html文件
 
 <!DOCTYPE html>
 <html lang="en">
