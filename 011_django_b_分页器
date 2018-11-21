@@ -1,0 +1,194 @@
+分页器
+# ==============================================================================
+
+使用方法：
+# 导入
+from django.core.paginator import Paginator
+# 在视图函数中
+def test(request):
+    book_list = Book.objects.all() # 所有书籍对象
+    
+    # 实例化出一个对象，第一个参数是要分页的书籍对象，第二个参数是每页多少条数据
+    paginator = Paginator(book_list，10)
+    
+    # -----------------------------对象内的属性----------------------------
+    
+    # 数据总条数--100条
+    print(paginator.count)
+    
+    # 总页数--10页
+    print(paginator.num_pages)
+    
+    # 页码数的列表
+    print(paginator.page_range)
+    
+    # 取到第 x 页 ,返回一个Page对象
+    current_page=paginator.page(5)
+    
+    # 当前页码内所有的数据
+    print(current_page.object_list)
+    
+    # 是否有下一页
+    print(current_page.has_next())
+    # 是否有上一页
+    print(current_page.has_previous())
+    
+    # 下一页页码数
+    print(current_page.next_page_number())
+    # 上一页的页码数
+    print(current_page.previous_page_number())
+    
+# ==============================================================================
+简单小案例：
+视图函数页面
+# views.py
+def test(request):
+    book_list = models.Book.objects.all()
+    paginator = Paginator(book_list, 5)
+
+    try:
+        # 通过GET请求方式取出当前页码数
+        current_page_num = int(request.GET.get('page'))
+
+        # 通过当前页码数，返回一个page对象
+        current_page = paginator.page(current_page_num)
+        
+        if paginator.num_pages > 11:
+            if current_page_num - 5 < 1:
+                page_range = range(1, 12)
+            elif current_page_num + 5 > paginator.num_pages:
+                page_range = range(paginator.num_pages - 10, paginator.num_pages + 1)
+            else:
+                page_range = range(current_page_num - 5, current_page_num + 6)
+        else:
+            page_range = paginator.page_range
+    except Exception as e:
+        current_page_num = 1
+    return render(request, 'test.html', locals())
+    
+# ==============================================================================
+html页面
+<!-- html页面 -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <script src="/static/jquery-3.3.1.js"></script>
+    <link rel="stylesheet" href="/static/bootstrap-3.3.7-dist/css/bootstrap.css">
+    <title>图书</title>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-6 col-md-offset-3">
+
+            <nav aria-label="Page navigation">
+                <ul class="pagination">
+                    {% if current_page.has_previous %}
+                        <li>
+                            <a href="/test/?page={{ current_page.previous_page_number }}" aria-label="Previous">
+                                <span aria-hidden="true">上一页</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="disabled">
+                            <a href="" aria-label="Previous">
+                                <span aria-hidden="true">上一页</span>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% for foo in page_range %}
+                        {% if current_page_num == foo %}
+                            <li class="active"><a href="/test/?page={{ foo }}">{{ foo }}</a></li>
+                        {% else %}
+                            <li><a href="/test/?page={{ foo }}">{{ foo }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+
+
+                    {% if current_page.has_next %}
+                        <li>
+                            <a href="/test/?page={{ current_page.next_page_number }}" aria-label="Next">
+                                <span aria-hidden="true">下一页</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="disabled">
+                            <a href="" aria-label="Next">
+                                <span aria-hidden="true">下一页</span>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                </ul>
+            </nav>
+
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>书籍名</th>
+                    <th>书籍价格</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for book in current_page %}
+                    <tr>
+                        <td>{{ book.name }}</td>
+                        <td>{{ book.price }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+# ==============================================================================
+
+HTML页面讲解：
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>书籍名</th>
+            <th>书籍价格</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- current_page 是当前页所包含的书籍对象，从后台传过来 -->
+        {% for book in current_page %}
+        <tr>
+            <td>{{ book.name }}</td>
+            <td>{{ book.price }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+# ==============================================================================
+
+上下页：
+<!-- 下一页与上一页相同，判断是否有下一页 -->
+<!-- 判断是否有上一页，如果没有，禁用上一页，并且将 a标签 里的 href 清空 -->
+{% if current_page.has_previous %}
+<li>
+    <a href="/test/?page={{ current_page.previous_page_number }}" aria-label="Previous">
+        <span aria-hidden="true">上一页</span>
+    </a>
+</li>
+{% else %}
+<li class="disabled">
+    <a href="" aria-label="Previous">
+        <span aria-hidden="true">上一页</span>
+    </a>
+</li>
+{% endif %}
+<!-- page_range指的是显示区间，比如当前页为9，显示左5右5，显示区间就是range(4,15)，顾头不顾尾 -->
+{% for foo in page_range %}
+    <!-- 如果当前页数与遍历出的页数相等，则该页数为活跃状态，添加 active -->
+    {% if current_page_num == foo %}
+        <li class="active"><a href="/test/?page={{ foo }}">{{ foo }}</a></li>
+    {% else %}
+        <li><a href="/test/?page={{ foo }}">{{ foo }}</a></li>
+    {% endif %}
+{% endfor %}
