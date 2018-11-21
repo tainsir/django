@@ -22,13 +22,11 @@ def auth_ajax(func):
 
 
         try:
-
             request.data = json.loads(request.body.decode('utf-8'))
         except Exception as e:
             print(e)
         res = func(request, *args, **kwargs)
         return res
-
     return inner
 
 #===================================
@@ -84,11 +82,8 @@ Template中index.html中
              data:{'name':'egon'},
              success:function (data) {
                  console.log(data)
-
              }
-
          })
-
      })
 
 */
@@ -107,9 +102,7 @@ Template中index.html中
                 console.log(data)
 
             }
-
         })
-
     })
 
 
