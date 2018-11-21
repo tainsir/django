@@ -1,0 +1,92 @@
+#====================================
+Model文件中
+
+class User(models.Model):
+    name=models.CharField(max_length=32)
+    pwd=models.CharField(max_length=32)
+    
+    
+    
+#====================================
+View视图函数中
+
+from django.shortcuts import render
+from app01 import models
+from django.http import JsonResponse
+
+
+# Create your views here.
+def index(request):
+    return render(request, 'index.html')
+
+
+def login(request):
+    # status:100表示成功,101表示失败
+    dic = {'status': 100, 'msg': None}
+    name = request.POST.get('name')
+    pwd = request.POST.get('pwd')
+    user = models.User.objects.all().filter(name=name, pwd=pwd).first()
+    if user:
+        dic['msg'] = '登录成功'        
+    else:
+        dic['status'] = 101
+        dic['msg'] = '用户名或密码错误'
+
+    return JsonResponse(dic)
+
+
+
+#====================================
+Template中index.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="/static/js/jquery-3.3.1.js"></script>
+    <title>Title</title>
+</head>
+<body>
+<form>
+   <p>用户名:<input type="text" id="name"></p>
+   <p>密码:<input type="text" id="pwd"></p>
+{#    不行 --会触发form表单的提交#}
+{#    <input type="submit" value="提交">#}
+{#    不行--会触发form表单的提交 #}
+{#    <button>提交</button>#}
+{#    可以#}
+{#    <input type="button">#}
+</form>
+{#可以#}
+<button id="btn">提交</button><span id="error"></span>
+</body>
+
+<script>
+    $("#btn").click(function () {
+        $.ajax(
+            {
+               url:'/login/',
+                type:'post',
+                data:{'name':$("#name").val(),'pwd':$("#pwd").val()},
+                dataType:'json',
+                success:function (data) {
+                    console.log(data)
+                    if(data.status==100){
+                        //跳转到百度
+                        location.href='https://www.baidu.com'
+                    }else{
+                        $("#error").html(data.msg).css({'color':'red'})
+                        //设置一个定时器,3秒之后,清空span中的文字,第一个参数是匿名函数,第二个参数是时间
+                        setTimeout(function () {
+                            $("#error").html("")
+                            //alert(1)
+                        },1000)
+                    }
+                }
+            }
+        )
+    })
+
+
+</script>
+</html>
