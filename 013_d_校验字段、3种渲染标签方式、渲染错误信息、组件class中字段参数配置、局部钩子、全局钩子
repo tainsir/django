@@ -1,0 +1,236 @@
+#=1==================================================================================
+创建数据库的用户表models
+
+from django.db import models
+# Create your models here.
+
+class User(models.Model):
+    name=models.CharField(max_length=32)
+    pwd=models.CharField(max_length=32)
+    email=models.EmailField()
+
+
+#=2==================================================================================
+视图函数层views.py文件中
+
+from django.shortcuts import render, HttpResponse,redirect
+
+# forms组件数据校验的功能
+# 第一步:先要继承Form
+from django import forms
+from django.forms import widgets
+from django.core.exceptions import ValidationError
+
+
+# 写一个类
+class MyForm(forms.Form):
+    # 定义一个属性,可以用来校验字符串类型
+    # 限制最大长度是8,最小长度是3
+    name = forms.CharField(max_length=8, min_length=3, label='用户名',
+                           error_messages={'max_length': '最长是8', 'min_length': '最短是3', 'required': '这个必须填'},
+                           widget=widgets.TextInput(attrs={'class': 'form-control'}))
+    pwd = forms.CharField(max_length=8, min_length=3, required=True, label='密码',
+                          error_messages={'max_length': '最长是8', 'min_length': '最短是3', 'required': '这个必须填'},
+                          widget=widgets.PasswordInput())
+    re_pwd = forms.CharField(max_length=8, min_length=3, required=True, label='确认密码',
+                          error_messages={'max_length': '最长是8', 'min_length': '最短是3', 'required': '这个必须填'},
+                          widget=widgets.PasswordInput())
+    # 校验是否是邮箱格式
+    email = forms.EmailField(label='邮箱', error_messages={'required': '这个必须填', 'invalid': '不符合邮箱格式'})
+
+    # aa = forms.CharField(label='选择', error_messages={'required': '这个必须填', 'invalid': '不符合邮箱格式'},widget=widgets.CheckboxInput())
+    def clean_name(self):
+        # self:当前form对象
+        name = self.cleaned_data.get('name')
+        if name.startswith('sb'):
+            # 失败,抛异常
+            raise ValidationError('不能以傻逼开头')
+        # 正常,把name返回
+        return name
+
+    def clean(self):
+        pwd=self.cleaned_data.get('pwd')
+        re_pwd=self.cleaned_data.get('re_pwd')
+        if pwd==re_pwd:
+            return self.cleaned_data
+        else:
+            raise ValidationError('两次密码不一致')
+
+
+
+# Create your views here.
+# def index_form(request):
+#     # 生成对象时(实例化),需要传入要校验的数据(字典)
+#     dic={'name':'lq','pwd':'123','email':'33@qq.com'}
+#
+#     myform=MyForm(dic)
+#     # is_valid如果是true表示校验成功,反之,校验失败
+#     if myform.is_valid():
+#         # 校验通过的数据
+#         print(myform.cleaned_data)
+#         return HttpResponse('校验成功')
+#     else:
+#         print(myform.cleaned_data)
+#         # 错误信息,它是一个字典
+#         print(myform.errors)
+#         print(myform.errors.as_data())
+#         print(type(myform.errors))
+#         from django.forms.utils import ErrorDict
+#         return HttpResponse('校验失败')
+
+# 数据从前端传过来,校验
+# 要校验的字典,可以多参数,但是不能少
+# def index_form(request):
+#     # 生成对象时(实例化),需要传入要校验的数据(字典)
+#     if request.method=='GET':
+#         return render(request,'indxe.html')
+#     elif request.method=='POST':
+#         print(request.POST)
+#         myform=MyForm(request.POST)
+#         # is_valid如果是true表示校验成功,反之,校验失败
+#         if myform.is_valid():
+#             # 校验通过的数据
+#             print(myform.cleaned_data)
+#             return HttpResponse('校验成功')
+#         else:
+#             print(myform.cleaned_data)
+#             # 错误信息,它是一个字典
+#             print(myform.errors)
+#             print(myform.errors.as_data())
+#             print(type(myform.errors))
+#          from django.forms.utils import ErrorDict
+#             return HttpResponse('校验失败')
+
+
+# 渲染模板
+# def index_form(request):
+#     # 生成对象时(实例化),需要传入要校验的数据(字典)
+#     myform=MyForm()
+#     if request.method=='GET':
+#         return render(request,'indxe2.html',locals())
+
+
+# 渲染错误信息
+from app01 import models
+def index_form(request):
+    # 生成对象时(实例化),需要传入要校验的数据(字典)
+    if request.method == 'GET':
+        myform = MyForm()
+        # for line in myform:
+        #     print(line)
+        # 四个input框
+    elif request.method == 'POST':
+        myform = MyForm(request.POST)
+        if myform.is_valid():
+            print(myform.cleaned_data)
+
+            # models.User.objects.create(name='lqz',pwd='123',re_pwd='123)
+            myform.cleaned_data.pop('re_pwd')
+            # **打散字典
+            models.User.objects.create(**myform.cleaned_data)
+            return redirect('http://www.baidu.com')
+        else:
+            # errors是个字典，全局clear钩子校验，用__all__
+            all_error = myform.errors.get('__all__')
+            if all_error:
+                all_error=all_error[0]
+            # print(myform.errors.as_data)
+
+    return render(request, 'indxe3.html', locals())
+
+
+
+
+
+#=3==================================================================================
+页面indxe.py文件
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<form action="" method="post">
+
+    <p>用户名: <input type="text" name="name"></p>
+{#    <p>密码: <input type="text" name="pwd"></p>#}
+    <p>确认密码: <input type="text" name="re_pwd"></p>
+    <p>邮箱: <input type="text" name="email"></p>
+    <input type="submit" value="提交">
+
+</form>
+</body>
+</html>
+
+
+
+
+
+#=4==================================================================================
+页面indxe2.py文件(三种渲染标签方式)
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<hr>
+<h1>第一种方式</h1>
+<form action="" method="post" >
+    <p>用户名: {{ myform.name }}</p>
+    <p>密码: {{ myform.pwd }}</p>
+    <p>邮箱: {{ myform.email }}</p>
+    <input type="submit" value="提交">
+
+</form>
+<hr>
+<h1>第二种方式(for循环form对象,建议用这种)</h1>
+<form action="" method="post" >
+    {% for foo in myform %}
+        <p>{{ foo.label }}:{{ foo }}</p>
+    {% endfor %}
+
+    <input type="submit" value="提交">
+</form>
+<h1>第三种方式(不建议用)</h1>
+<form action="" method="post" >
+
+{#    {{ myform.as_p }}#}
+    {{ myform.as_ul }}
+    <input type="submit" value="提交">
+</form>
+</body>
+</html>
+
+
+#=5==================================================================================
+页面indxe3.py文件(渲染input框后的错误信息)
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/bootstrap-3.3.7-dist/css/bootstrap.min.css">
+    <title>Title</title>
+</head>
+<body>
+
+<h1>第二种方式(for循环form对象,建议用这种)</h1>
+<form action="" method="post" novalidate>
+    {% for foo in myform %}
+        <p>{{ foo.label }}:{{ foo }} <span>{{ foo.errors.0 }}</span></p>
+    {% endfor %}
+
+    <input type="submit" value="提交"><span>{{ all_error }}</span>
+</form>
+</body>
+</html>
