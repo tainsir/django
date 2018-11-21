@@ -1,0 +1,100 @@
+ROM补充
+# ===========================================================================
+一、inclusion_tag
+用来生成html片段（动态，传参数，传数据），使用方法跟之前的自定义过滤器、标签一样
+# 一、在app文件夹下新建一个模块（文件夹），templatetags 
+# 二、在该文件夹下创建一个py文件，文件名就是模块名，（mytag.py）
+# 三、在该文件中：
+from django.template import Library
+# register不能变
+register = Library()
+
+@inclusion_tag('模板路径',name='重命名')
+def my_in(参数):  # 参数可写可不写、可多个，按位置传参，空格分隔
+    # 一堆逻辑处理,查数据库
+    ret=Book.object.all()
+    return {''books':ret} # 返回的必须是字典格式数据
+
+# 四、在模板层中：
+# 可以使用之前返回的books，对页面进行渲染
+
+# 五、使用，在另一个模板中
+{%load mytag.py%}
+{% my_in 参数 %}           
+
+# ===========================================================================
+二、defer、only
+# only:只查询我指定的字段,返回值是queryset里套对象,只是对象里只有指定的字段
+# defer:查询除了指定字段外的其他字段
+# id必查
+# 没查询的字段，不要去使用，它会再次查询数据库，对数据库造成压力
+
+
+# ===========================================================================
+三、事务
+# django事务操作
+from django.db import transaction
+    with transaction.atomic():
+        # 两条create
+        pass
+
+
+# ===========================================================================
+四、choice
+用在创建表模型时，字段选择不经常变的情况下：例如性别只有 男、女（非男非女不做考虑！）
+# 在模型表类中定义
+mychoice=((1,'男'),(2,'女'))
+# 在数据库中存数字，1表示男，2表示女
+# 在字段上用:
+sex = models.IntegerField(choices=mychoice)
+
+# 取对应的文字:
+# 在视图层:(get_字段名_display())
+sex=author.get_dd_display()
+
+
+
+# ===========================================================================
+五、多对多关系，创建第三张表的三种方式
+# 一、手动创建第三张表(不创建关联关系)
+class Book(models.Model):
+    # 默认会创建id
+    name = models.CharField(max_length=32)
+    
+class Author(models.Model):
+    name = models.CharField(max_length=32)
+    
+class Book2Author(models.Model):
+    id = models.AutoField(primary_key=True)
+    book=models.ForeignKey(to='Book',to_field='id')
+    author=models.ForeignKey(to='Author',to_field='id')
+# 不管是插入和查询,删除,都很麻烦(一般不用)
+# 自动创建第三张表
+# 查询,插入,删除,都很方便
+# 缺点:字段是固定的,第三张表如果要添加字段,实现不了
+
+# 二、手动创建第三张表,建立关联关系
+class Book(models.Model):
+    # 默认会创建id
+    name = models.CharField(max_length=32)
+    # 中介模型,手动指定第三张中间表是Book2Author
+    authors=models.ManyToManyField(to='Author',through='Book2Author',\
+through_fields=('book','author'))
+class Author(models.Model):
+    name = models.CharField(max_length=32)
+    def __str__(self):
+    return self.name
+    
+class Book2Author(models.Model):
+    id = models.AutoField(primary_key=True)
+    book=models.ForeignKey(to='Book',to_field='id')
+    author=models.ForeignKey(to='Author',to_field='id')
+                
+# through:来指定我的第三张表是哪个
+# through_fields:('book','author'),第一个值是:从中间表找到设置关联字段的表,通过哪个字段,第一个位置就写它
+# 终极总结:防止混了:关联字段就是表名小写,第一个值:就是当前表的表名小写
+# 查询,新增,删除,都很方便
+# 第三张表,可以添加别的字段
+
+# 三，使用ManyToManyField自动创建第三张表
+    
