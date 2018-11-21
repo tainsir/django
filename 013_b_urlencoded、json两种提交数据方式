@@ -1,0 +1,117 @@
+#=============================================================
+view视图函数中
+
+
+from django.shortcuts import render, HttpResponse
+
+# Create your views here.
+import json
+
+
+def auth_ajax(func):
+    def inner(request, *args, **kwargs):
+        request.data = request.POST
+        # POST 提交数据可以在url中取页面'/index/？name=lxx'，
+        # path是不携带数据的路径
+        # 页面的url数据(常用get取)与post提交的数据(用post取),不能都放在data里面,无法区分，后面的数据会覆盖前面数据
+        # get数据(html页面ajax中url：/index/name=lxxx,总url路径:/index/)放在GET,body体内数据(data:{'name':'lxx})放在POST
+        # path = request.path
+        # get_full_path()是全路径,后面携带数据,后面?拼接
+        # get_data = request.get_full_path()
+        print(request.body)
+
+
+        try:
+
+            request.data = json.loads(request.body.decode('utf-8'))
+        except Exception as e:
+            print(e)
+        res = func(request, *args, **kwargs)
+        return res
+
+    return inner
+
+#===================================
+# #@auth_ajax
+# def index(request):
+#     if request.method == 'GET':
+#         return render(request, 'index.html')
+#     elif request.method == 'POST':
+#         print(request.GET.get('name'))  #url中lqz
+#         print(request.POST.get('name'))  #body体中，data中egon
+#         return HttpResponse('ok')
+
+@auth_ajax
+def index(request):
+    if request.method == 'GET':
+        return render(request, 'index.html')
+    elif request.method == 'POST':
+        # print(request.GET.get('name'))
+        # print(request.POST.get('name'))
+        print(request.data)
+        # 打印为b'name=egon' {'name':['lqz',]}
+        print(request.data.get('name'))
+        # 打印为egon
+        return HttpResponse('ok')
+
+
+
+
+#=======================================
+Template中index.html中
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="/static/jquery-3.3.1.js"></script>
+    <title>Title</title>
+</head>
+<body>
+<button id="btn">点我</button>
+</body>
+<script>
+/*
+   $("#btn").click(function () {
+         $.ajax({
+             {#必须从大写GET中拿数据,url的数据以路径传到后台, request.GET.get(name)...lqz#}
+             url:'/index/?name=lqz',
+             type:'post',
+             {#data中的数据放在body体内，从大写POST中拿，request.POST.get(name)...egon#}
+
+             {#data传的是urlencoded编码#}
+             data:{'name':'egon'},
+             success:function (data) {
+                 console.log(data)
+
+             }
+
+         })
+
+     })
+
+*/
+
+#===================================
+    $("#btn").click(function () {
+        var dic = {'name': 'egon'}
+        {#stringify转换成json格式的字符串，parse将json格式字符串解析为对象#}
+        var da=JSON.stringify(dic)
+        $.ajax({
+            url: '/index/?name=lqz',
+            type: 'post',
+            contentType: 'application/json',
+            data:da,
+            success: function (data) {
+                console.log(data)
+
+            }
+
+        })
+
+    })
+
+
+</script>
+</html>
