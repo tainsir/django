@@ -1,0 +1,172 @@
+# =========================================================================================
+1).url.py中
+
+
+from django.conf.urls import url
+from django.contrib import admin
+from app01 import views
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    # url(r'^set_cookie/', views.set_cookie),
+    # url(r'^get_cookie/', views.get_cookie),
+    # url(r'^login/', views.login),
+    # url(r'^order/', views.order),
+    url(r'^shopping/', views.shopping),
+    url(r'^salt_cookie/', views.salt_cookie),
+    url(r'^get_cookie/', views.get_cookie),
+    url(r'^delete_cookie/', views.delete_cookie),
+]
+
+
+
+# =========================================================================================
+2).views.py中
+
+from django.shortcuts import render, HttpResponse, redirect
+
+
+# Create your views here.
+# def set_cookie(request):
+#     obj = HttpResponse('ok')
+#     # 设置cookie
+#     obj.set_cookie('name', 'lqz')
+#     return obj
+#
+#
+# def get_cookie(request):
+#     print(type(request.COOKIES))
+#     # 取cookie的值
+#     print(request.COOKIES)
+#     name=request.COOKIES.get('name')
+#
+#     obj = HttpResponse('get_cookie')
+#     return obj
+
+# 登录认证装饰器
+# def login_auth(func):
+#     def inner(request, *args, **kwargs):
+#         # 拿到之前访问的路径
+#         # 这个不行,因为取不到数据部分
+#         # url=request.path
+#         url = request.get_full_path()
+#
+#         is_login = request.COOKIES.get('is_login')
+#         if is_login:
+#             res = func(request, *args, **kwargs)
+#             return res
+#         else:
+#             return redirect('/login/?next=%s' % url)
+#
+#     return inner
+
+
+# 登录认证,只有登录了,才能查看订单页面
+# 原来的login
+# def login(request):
+#     if request.method == 'GET':
+#         return render(request, 'login.html')
+#     else:
+#         name = request.POST.get('name')
+#         pwd = request.POST.get('pwd')
+#         if name == 'lqz' and pwd == '123':
+#             # 登录成功,写到客户端浏览器cookie
+#             obj = HttpResponse('登录成功')
+#             # 新手三件套,都能写cookie
+#             obj.set_cookie('is_login', True)
+#             return obj
+#         else:
+#             return HttpResponse('用户名或密码错误')
+# 新的login
+# def login(request):
+#     if request.method == 'GET':
+#         return render(request, 'login.html')
+#     else:
+#         next = request.GET.get('next')
+#         name = request.POST.get('name')
+#         pwd = request.POST.get('pwd')
+#         if name == 'lqz' and pwd == '123':
+#
+#             if next:
+#                 obj = redirect(next)
+#             else:
+#                 obj = redirect('/shopping/')
+#
+#             obj.set_cookie('is_login', True)
+#             return obj
+#         else:
+#             return HttpResponse('用户名或密码错误')
+
+
+# def order(request):
+#     is_login = request.COOKIES.get('is_login')
+#     if is_login:
+#         return HttpResponse('我是订单页面,我得登录才能看')
+#     else:
+#         return redirect('/login/')
+#
+#
+# def shopping(request):
+#     is_login = request.COOKIES.get('is_login')
+#     if is_login:
+#         return HttpResponse('我是购物,我得登录才能看')
+#     else:
+#         return redirect('/login/')
+
+# @login_auth
+# def order(request):
+#     return HttpResponse('我是订单页面,我得登录才能看')
+#
+#
+# @login_auth
+def shopping(request):
+    return HttpResponse('我是购物,我得登录才能看')
+
+
+# 加盐的cookie
+def salt_cookie(request):
+    object=HttpResponse('ok')
+    # 加盐,123是个密码,解cookie的时候需要它,
+    # object.set_signed_cookie('name','lqz',salt='123')
+    # object.set_signed_cookie('name','lqz',salt='123',)
+    # 5秒之后失效,三天失效
+    # object.set_cookie('name','lqz',max_age=60*60*24*3)
+    # path
+    # object.set_cookie('name', 'lqz', path='/shopping/')
+    object.set_cookie('name', 'lqz')
+    return object
+
+def get_cookie(request):
+    # name=request.COOKIES.get('name')
+    # print(name)
+
+
+    return HttpResponse('ok')
+
+
+def delete_cookie(request):
+
+
+    obj= HttpResponse('ok')
+    # 指定删除名字是name的cookie
+    obj.delete_cookie('name')
+    return obj
+# =========================================================================================
+
+3).login.html中
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+
+<form action="" method="post">
+    <input type="text" name="name">
+    <input type="text" name="pwd">
+    <input type="submit" value="提交">
+</form>
+<body>
+
+</body>
+</html>
