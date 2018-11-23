@@ -1,0 +1,244 @@
+# ==========================================================================================
+1).在url.py中
+
+
+from django.conf.urls import url
+from django.contrib import admin
+from app01 import views
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    url(r'^test_middle/', views.test_middle),
+    url(r'^hack/', views.hack),
+    url(r'^csrf_test/', views.csrf_test),
+    # url(r'^csrf_disable/', views.csrf_disable),
+    url(r'^csrf_disable/', views.Csrf_disable.as_view()),
+]
+
+
+# ==========================================================================================
+2).在setting.py中找到中间件，并配置,并点击试运行
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'app01.mymiddelware.MyMiddleware1',
+    'app01.mymiddelware.MyMiddleware2',
+
+
+]
+
+# from app01.mymiddelware import MyMiddleware1
+# from django.middleware.csrf import CsrfViewMiddleware
+# from  django.contrib.sessions.middleware import SessionMiddleware
+
+
+
+
+# ==========================================================================================
+3).在app01文件夹下创建mymiddleware.py
+
+
+from django.utils.deprecation import MiddlewareMixin
+
+from django.shortcuts import render,HttpResponse
+class MyMiddleware1(MiddlewareMixin):
+    def process_request(self, request):
+        print('MyMiddleware---->1---->process_request')
+        # 返回HttpRspons对象,直接返回,走自己的process_response
+        # 返回None的时候,继续往下走
+        # return HttpResponse('i am middle--1')
+        return None
+
+    def process_response(self, request, response):
+
+        print('MyMiddleware--->1---->process_response')
+        return response
+
+    # def process_view(self, request, callback, callback_args, callback_kwargs):
+    #     print('MyMiddleware--->1',callback)
+    #     print(callback_args)
+    #     print(callback_kwargs)
+    #     ret = callback(request)
+    #     return ret
+
+    # def process_exception(self, request, exception):
+    #     print('middle--1---exception')
+    #     print(exception)
+    #     return HttpResponse(exception)
+    def process_template_response(self, request, response):
+        print('process_template_response')
+        return response
+
+
+class MyMiddleware2(MiddlewareMixin):
+    def process_request(self, request):
+        # print(request.GET.get('name'))
+        print('MyMiddleware--->2---->process_request')
+        # return HttpResponse('i am middle--2')
+
+    def process_response(self, request, response):
+        print('MyMiddleware--->2---->process_response')
+        # response.set_cookie('name','lqz')
+        return response
+
+    def process_view(self, request, callback, callback_args, callback_kwargs):
+        print('MyMiddleware--->2',callback)
+        print(callback_args)
+        print(callback_kwargs)
+
+
+
+
+# ==========================================================================================
+4).视图层view.py中
+
+
+
+from django.shortcuts import render, HttpResponse
+
+# Create your views here.
+# def test_middle(request):
+#     print('我是视图函数')
+#     a
+#     return HttpResponse('i am view')
+import json
+
+class Test():
+
+    def render(self):
+        return HttpResponse('test')
+
+
+def test_middle(request):
+    return Test()
+
+
+def hack(request):
+    return render(request,'hack.html')
+
+
+def csrf_test(request):
+    if request.method=='GET':
+
+        return render(request,'csrf_test.html')
+    else:
+        print(request.POST)
+        return HttpResponse('ok')
+
+# 局部禁用
+from django.views.decorators.csrf import csrf_exempt,csrf_protect
+# @csrf_exempt
+# def csrf_disable(request):
+#         print(request.POST)
+#         return HttpResponse('ok')
+# 局部使用
+# @csrf_protect
+# def csrf_disable(request):
+#         print(request.POST)
+#         return HttpResponse('ok')
+
+from django.views import View
+from django.utils.decorators import method_decorator
+@method_decorator(csrf_protect,name='dispatch')
+class Csrf_disable(View):
+    # @method_decorator(csrf_protect)
+    def dispatch(self, request, *args, **kwargs):
+        ret=super().dispatch(request, *args, **kwargs)
+        return ret
+    def get(self,request):
+        return HttpResponse('ok')
+
+    def post(self,request):
+        return HttpResponse('post---ok')
+
+
+# ==========================================================================================
+5).在模板层hack.html中
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<a href="http://127.0.0.1:8001/transfer/?to=lqz&count=1000">点我看美女图片</a>
+</body>
+</html>
+
+# ==========================================================================================
+6).在模板层csrf_test.html中
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="/static/jquery-3.3.1.js"></script>
+    <script src="/static/jquery.cookie.js"></script>
+</head>
+<body>
+<form action="" method="post">
+    {% csrf_token %}
+    {#    {{ csrf_token }}#}
+    <input type="text" name="name">
+    <input type="text" name="pwd">
+    <input type="submit" value="提交">
+
+</form>
+<button id="btn">点我</button>
+</body>
+
+<script>
+    /*
+    $("#btn").click(function () {
+        $.ajax({
+            url: '/csrf_disable/',
+            type: 'post',
+            data: {
+                'name': $('[name="name"]').val(),
+                'pwd': $('[name="pwd"]').val(),
+                //'csrfmiddlewaretoken': $('[name="csrfmiddlewaretoken"]').val()
+                //'csrfmiddlewaretoken': 'C6KOUWka1o7LRRbImU7M0nOGeA5labUiuI9mKmec0QiWQjca570RZ54MfHacc'
+            },
+            success: function (data) {
+                alert(data)
+
+            }
+        })
+
+    })
+    */
+
+        $("#btn").click(function () {
+            var token = $.cookie('csrftoken')
+            alert(token)
+            //var token='{{ csrf_token }}'
+            $.ajax({
+                url: '',
+                headers: {'X-CSRFToken': token},
+                type: 'post',
+                data: {
+                    'name': $('[name="name"]').val(),
+                    'password': $("#pwd").val(),
+                },
+                success: function (data) {
+                    console.log(data)
+                }
+
+            })
+        })
+
+</script>
+</html>
+
+
+
+
+
