@@ -1,0 +1,69 @@
+# =========================================================
+cookie
+
+# =========================================================
+
+一、cookie
+cookie 指的是存储在客户端浏览器上的键值对
+cookie存在键值对在浏览器上可以明码显示的安全问题
+原理：
+是由服务器产生，然后发送给客户端浏览器，浏览器会保存起来，下次发请求，,会携带这个键值对到服务器
+cookie的覆盖
+先产生一个键值对，发送给客户端浏览器保存，然后再产生一个新的键值对，会把原来保存在浏览器的值覆盖
+django中cookie的使用
+# 一、产生cookie
+# 由Httpresponse产生一个对象
+# 然后给这个对象通过 set_cookie() 设置键值对
+
+def set_cookie(request):
+   obj = HttpResponse('ok')
+   # 设置cookie
+    obj.set_cookie('name', 'hgq')
+    return obj
+# =========================================================
+
+# 二、取出cookie：从request对象中取出，取出来是一个字典
+request.COOKIES
+# 通过get方法取出特定的键值对
+request.COOKIES.get('name')
+
+
+# =========================================================
+
+# 三、删除cookie：通过delete_cookie()
+obj.delete_cookie('name')
+简单的登录认证装饰器：登录状态下会产生一个键值对，判断键值对
+def login_auth(func):
+    def inner(request, *args, **kwargs):
+        # 拿到之前访问的路径
+        # 这个不行,因为取不到数据部分
+        # url=request.path
+        url = request.get_full_path()
+
+        is_login = request.COOKIES.get('is_login')
+        if is_login:
+            res = func(request, *args, **kwargs)
+            return res
+        else:
+            return redirect('/login/?next=%s' % url)
+
+    return inner
+# is_login 是登录成功状态下产生的键值对，通过判断键值对是否存在，判断用户是否登录
+cookie的其他属性
+# 加盐 salt，123是个密码，解cookie的时候需要它
+object = HttpResponse('ok')
+object.set_signed_cookie('name','hgq',salt='123')
+
+# 过期时间 max_age 后台设置控制过期时间，3天后失效
+# 超时时间 max_age,传一个秒的时间
+# 超时时间 expires,传一个datatime对象
+object.set_cookie('name','hgq',max_age=60*60*24*3)
+
+# path 设置路径,设置路径之后,path='/index/',只有访问index的时候,才会携带cookie过来
+object.set_cookie('name', 'hgq', path='/index/')
+
+# domain 设置域名下有效domain='map.baidu.com'，设置这个cookie在这个域名下有效
+
+# secure = False, (默认是false,设置成True浏览器将通过HTTPS来回传cookie)
+
+# httponly = True 只能https协议传输，无法被JavaScript获取（不是绝对，底层抓包可以获取到也可以被覆盖)
