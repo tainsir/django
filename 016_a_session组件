@@ -1,0 +1,75 @@
+session组件
+# =======================================================================================
+一、session
+为了解决 cookie 不安全的问题
+存在服务器上的键值对{'sdaf随机字符串':{name:lqz,pwd:123}}
+用session必须跟cookie连用
+# =======================================================================================
+
+二、django中session的使用
+设置session：
+# 设置session
+request.session['name'] = 'hgq'
+request.session['age'] = '18'
+# 如果设置多个,它会以字典的形式存储到session表中的session_data中
+django 中生成session时：
+生成随机字符串:asdjkfhjkabs
+将随机字符串存入数据库
+写入cookie(set_cookie('sessionid','asdjkfhjkabs'))
+取值：
+name=request.session['name']
+取值时执行的流程：
+取出cookie的随机字符串
+在数据库session表中根据随机字符串查询，查询出session_data这个字典，然后将字典中你要取出的字段返回
+删除值：
+# 取出cookie,随机字符串,去数据库删除随机字符串是当前值的记录(只删除数据库中记录的cookie)
+request.session.delete
+
+# 既删除cookie,又删除数据库
+request.session.flush()
+# =======================================================================================
+
+三、session中的其他属性
+ # 如果已存在该键值对，则不设置该键值对
+request.session.setdefault('k1',123)
+
+# 取到随机字符串，浏览器带过来的cookie的值
+print(request.session.session_key)
+# ps：内部 request.COOKIES.get('sessionid')
+
+# 清空失效的session
+request.session.clear_expired()
+
+# 校验sessionid是否存在
+request.session.exists('session_key')
+# =======================================================================================
+
+四、session的配置
+在settings.py配置文件中
+# 1. 数据库Session
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'   # 引擎（默认）
+
+# 2. 缓存Session
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'  # 引擎
+SESSION_CACHE_ALIAS = 'default'                            # 使用的缓存别名（默认内存缓存，也可以是memcache），此处别名依赖缓存的设置
+
+# 3. 文件Session
+SESSION_ENGINE = 'django.contrib.sessions.backends.file'    # 引擎
+SESSION_FILE_PATH = None                                    # 缓存文件路径，如果为None，则使用tempfile模块获取一个临时地址tempfile.gettempdir() 
+
+# 4. 缓存+数据库
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'        # 引擎
+
+# 5. 加密Cookie Session
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'   # 引擎
+
+# 其他公用设置项：
+SESSION_COOKIE_NAME ＝ "sessionid"      # Session的cookie保存在浏览器上时的key，即：sessionid＝随机字符串（默认）
+SESSION_COOKIE_PATH ＝ "/"              # Session的cookie保存的路径（默认）
+SESSION_COOKIE_DOMAIN = None            # Session的cookie保存的域名（默认）
+SESSION_COOKIE_SECURE = False           # 是否Https传输cookie（默认）
+SESSION_COOKIE_HTTPONLY = True          # 是否Session的cookie只支持http传输（默认）
+SESSION_COOKIE_AGE = 1209600            # Session的cookie失效日期（2周）（默认）
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False # 是否关闭浏览器使得Session过期（默认）
+SESSION_SAVE_EVERY_REQUEST = False      # 是否每次请求都保存Session，默认修改之后才保存（默认）
+
