@@ -1,0 +1,59 @@
+#=========================================================================================
+在url.py文件中
+
+from django.conf.urls import url
+from django.contrib import admin
+from app01 import views
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    url(r'^set_session/', views.set_session),
+    url(r'^get_session/', views.get_session),
+]
+
+
+
+#=========================================================================================
+在url.py文件中
+
+
+
+from django.shortcuts import render,HttpResponse
+
+# Create your views here.
+def set_session(request):
+    # 写session,干了三件事(每个浏览器会生成一个随机字符串)
+    # 随机字符串是跟浏览器相关的,数据是跟账号相关的
+    request.session['name']='lqz'
+    # request.session['age']='18'
+    # request.session['sex']='男'
+    '''
+    1 生成随机字符串:dfasfasdfa
+	2 去数据库存储
+	    随机字符串     值  (字典形式)              超时时间
+	    dfasfasdfa   {'name':'lqz','age':18,'sex':'男'}       超时时间
+	3 写入scookie(set_cookie('sessionid','dfasfasdfa'))
+    '''
+    return HttpResponse('ok')
+
+def get_session(request):
+    # request.session['sex'] = '男'
+    # 取session   取name这个字段对应的值
+
+    # name=request.session['name']
+    # 正常流程
+    # 去cookie中取出随机字符串
+    # 取session那个表去查询,取出session_data的数据,解密成字典,然后取name的值
+    # print(name)
+    # 取到随机字符串,浏览器带过来的cookie的值
+    # print(request.session.session_key)
+    # 内部
+    request.COOKIES.get('sessionid')
+    # 删除数据库的数据(内部)
+    # 取出cookie,随机字符串,去数据库删除随机字符串是当前值的记录
+    # request.session.delete()
+    # 即删数据库,又删浏览器的cookie
+    request.session.flush()
+    return HttpResponse('get_session')
+
+
+#=========================================================================================
