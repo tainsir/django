@@ -1,0 +1,92 @@
+forms组件
+# ========================================================================================
+一、简单使用
+# views.py 视图层
+# 第一步写一个类继承Form
+# 先导入
+from django import forms
+from django.forms import widgets
+from django.core.exceptions import ValidationError
+
+class MyForm(forms.Form):
+    # 定义一个属性,可以用来校验字符串类型
+    # 限制最大长度是8,最小长度是3
+    name = forms.CharField(max_length=8, min_length=3, label='用户名',error_messages={'max_length': '最长是8', 'min_length': '最短是3', 'required': '这个必须填'},widget=widgets.TextInput(attrs={'class': 'form-control'}))
+    
+    # ----------------------------------组件参数配置----------------------------------- #
+    # max_length=8 ， 最大长度为8
+    # min_length=3 ， 最小长度为3
+    # label='用户名'， 渲染到网页上的label标签
+    # error_messages={'max_length': '最长是8', 'min_length': '最短是3', 'required': '这个必须填'} 校验属性的报错信息
+    # widget=widgets.TextInput(attrs={'class': 'form-control'}) 属性的标签类型，以及添加标签内的参数，例如 class    
+    # ------------------------------------------------------------------------------- #
+        
+    # ------------------------------------局部钩子------------------------------------ #
+    def clean_name(self):
+        # self:当前form对象
+        name = self.cleaned_data.get('name')
+        if name.startswith('sb'):
+            # 失败,抛异常
+            raise ValidationError('不能以sb开头')
+            # 正常,把name返回
+            return name
+    # 当属性的校验全部满足后，执行 clean_属性名 的方法，注：获取用户输入的内容，判断是否以'sb'开头
+    
+    
+    # ------------------------------------全局钩子------------------------------------ #
+    # 有pwd以及re_pwd两个属性。输入密码以及确认密码，当属性的校验全部满足后，执行 clean 全局钩子，判断两次输入的密码是否一致
+    def clean(self):
+        pwd = self.cleaned_data.get('pwd')
+        re_pwd = self.cleaned_data.get('re_pwd')
+        if pwd == re_pwd:
+            return self.cleaned_data
+        else:
+            raise ValidationError('两次密码不一致')
+
+# ========================================================================================
+
+渲染标签功能
+<!-- 在html页面中使用forms渲染页面 -->
+
+
+<h1>第一种方式</h1>
+<form action="" method="post" >
+    <p>用户名: {{ myform.name }}</p>
+    <p>密码: {{ myform.pwd }}</p>
+    <p>邮箱: {{ myform.email }}</p>
+    <input type="submit" value="提交">
+</form>
+
+
+<h1>第二种方式(for循环form对象,建议用这种)</h1>
+<form action="" method="post" >
+    {% for foo in myform %}
+        <p>{{ foo.label }}:{{ foo }}</p>
+    {% endfor %}
+    <input type="submit" value="提交">
+</form>
+
+
+<h1>第三种方式(不建议用)</h1>
+<form action="" method="post" >
+    {{ myform.as_p }}
+    <input type="submit" value="提交">
+</form>
+<!-- 封装的方法越少，代码可扩建性越差，所有提倡使用第二种方法，for循环 -->
+# ========================================================================================
+
+渲染错误信息功能
+# 当校验不合格时，将错误信息渲染到前端页面上
+def register(request):
+
+    if request.method=="POST":
+        form=UserForm(request.POST)
+        if form.is_valid():
+            print(form.cleaned_data)       # 所有干净的字段以及对应的值
+        else:
+            print(form.cleaned_data)       #
+            print(form.errors)             # ErrorDict : {"校验错误的字段":["错误信息",]}
+            print(form.errors.get("name")) # ErrorList ["错误信息",]
+        return render(request,"register.html",locals())
+    form=UserForm()
+    return render(request,"register.html",locals())
