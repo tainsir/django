@@ -1,0 +1,97 @@
+中间件
+# ====================================================================================================
+一、什么是中间件
+中间件顾名思义，是介于request与response处理之间的一道处理过程，相对比较轻量级，并且在全局上改变django的输入与输出。因为改变的是全局，所以需要谨慎实用，用不好会影响到性能
+
+# ====================================================================================================
+
+二 中间件有什么用
+如果你想修改请求，例如被传送到view中的HttpRequest对象。 或者你想修改view返回的HttpResponse对象，这些都可以通过中间件来实现。
+
+可能你还想在view执行之前做一些操作，这种情况就可以用 middleware来实现。
+
+Django默认的中间件：（在django项目的settings模块中，有一个 MIDDLEWARE_CLASSES 变量，其中每一个元素就是一个中间件）
+# ====================================================================================================
+
+三、自定义中间件
+中间件中主要有几个方法：
+process_request(self,request)
+
+process_view(self, request, callback, callback_args, callback_kwargs)
+
+process_template_response(self,request,response)
+
+process_exception(self, request, exception)
+
+process_response(self, request, response)
+使用：(新建的my_middelware.py文件中)
+# 第一步：导入
+from django.utils.deprecation import MiddlewareMixin
+
+# 第二步：自定义中间件
+class Md1(MiddlewareMixin):
+    def process_request(self,request):
+        print("Md1请求")
+ 
+    def process_response(self,request,response):
+        print("Md1返回")
+        return response
+    
+class Md2(MiddlewareMixin):
+    def process_request(self,request):
+        print("Md2请求")
+        #return HttpResponse("Md2中断")
+    def process_response(self,request,response):
+        print("Md2返回")
+        return response
+views.py中：
+# 第三步：在视图层定义一个视图函数
+def index(request):
+    print("view函数...")
+    return HttpResponse("OK")
+settings.py中：
+# 在settings.py中的MIDDLEWARE里注册自定义的组件
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'app01.my_middelware.py.Md1',
+    'app01.my_middelware.py.Md2',
+]
+运行结果：
+Md1请求
+Md2请求
+view函数...
+Md2返回
+Md1返回
+总结：
+中间件执行顺序:
+process_request,从上往下执行
+如果retrun HttpResponse的对象,直接返回了
+如果retrun None ,继续往下走
+process_response,从下往上执行
+必须要retrun Httpresponse的对象
+process_view方法：
+def process_view(self, request, callback, callback_args, callback_kwargs):
+        print("Md1view")
+# callback 参数：视图函数
+# callback_args 参数：无名分组的参数
+# callback_kwargs 参数：有名分组的参数
+
+process_exception方法：
+def process_exception(self,request,exception):
+        print("md1 process_exception...")
+        
+# 在视图函数报错的时候，可以捕捉报错信息并显示在前台和控制台中
+# ====================================================================================================
+
+四、中间件应用场景
+1、做IP访问频率限制
+某些IP访问服务器的频率过高，进行拦截，比如限制每分钟不能超过20次。
+2、URL访问过滤
+如果用户访问的是login视图（放过）
+如果访问其他视图，需要检测是不是有session认证，已经有了放行，没有返回login，这样就省得在多个视图函数上写装饰器了！
