@@ -1,0 +1,128 @@
+1 登录认证,写在中间件中(只有登录的请求不需要登录以后操作,其他请求,都必须登录以后操作)
+# =====================================================================================================
+
+
+# =====================================================================================================
+在app01中创建middleware.py文件
+
+from django.shortcuts import render, HttpResponse, redirect
+from django.http import JsonResponse
+from django.utils.deprecation import MiddlewareMixin
+
+class login(MiddlewareMixin):
+    def process_request(self,request):
+        if request.path=='/login/':
+            return None
+        else:
+            if request.COOKIES.get('aa'):
+                return None
+            else:
+                return redirect('/login/')
+
+    def process_response(self, request, response):
+        return response
+
+
+# =====================================================================================================
+3).在视图函数views.py中
+
+from django.shortcuts import render, HttpResponse, redirect
+from django.http import JsonResponse
+
+def shopping(request):
+    return HttpResponse('订单')
+    
+def login(request):
+    if request.method=='GET':
+        return render(request,'aa.html')
+    else:
+        name=request.POST.get('name')
+        pwd=request.POST.get('pwd')
+        if name=='tom' and pwd=='123':
+            obj=redirect('/shopping/')
+            obj.set_cookie(key='aa', value='bb')
+            return obj
+        else:
+            return HttpResponse('用户名错误')
+
+# =====================================================================================================
+在aa.html页面
+
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="/static/jquery-3.3.1.js"></script>
+    <link rel="stylesheet" href="/static/bs/js/bootstrap.js">
+    <link rel="stylesheet" href="/static/bs/css/bootstrap.css">
+</head>
+<body>
+<form action="" method="post">
+    <input type="text" name="name" placeholder="name" class="nm">
+    <input type="text" name="pwd" placeholder="pwd" class="pwd">
+    <input type="submit" value="提交">
+</form>
+{#<button type="button" id="btn">提交</button>#}
+
+</body>
+<script>
+    $('#btn').click(function () {
+
+        $.ajax({
+            url:'/aa/12',
+            type:'post',
+            data: {
+                'name': $('[name="name"]').val(),
+                'pwd': $('[name="pwd"]').val(),
+            },
+            success:function (res) {
+                aa=JSON.parse(res)
+                alert(aa)
+            }
+        })
+    })
+</script>
+
+
+
+# =====================================================================================================
+在setting.py中配置
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'app01.middleware.login',
+    
+]
+
+DATABASES = {
+    'default': {
+        # 'ENGINE': 'django.db.backends.sqlite3',
+        # 'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'zzz',
+        'USER': 'root',
+        'PASSWORD': '123',
+        'HOST': '127.0.0.1',
+        'PORT': 3306,
+        'ATOMIC_REQUEST': True,
+
+    }
+}
+
+STATICFILES_DIRS=[
+    os.path.join(BASE_DIR, 'static')
+]
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+
+app01下__init__中导模块
+import pymysql
+
+pymysql.install_as_MySQLdb()
+
+
