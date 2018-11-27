@@ -1,0 +1,138 @@
+写一个频率控制的中间件(任意用户,一分钟只能访问3次)应用上csrf
+		-思路:
+			-当前访问的ip地址取出来
+			-存一个临时变量{ip:[时间1,时间2,时间3]}
+      
+# ===========================================================================================
+1).django的setting.py中
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'app01.middleware.middle01',
+]
+# 添加mysql数据库
+DATABASES = {
+    'default': {
+        # 'ENGINE': 'django.db.backends.sqlite3',
+        # 'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'zzz',
+        'USER': 'root',
+        'PASSWORD': '123',
+        'HOST': '127.0.0.1',
+        'PORT': 3306,
+        'ATOMIC_REQUEST': True,
+
+    }
+}
+# 配置静态文件
+STATICFILES_DIRS=[
+    os.path.join(BASE_DIR, 'static')
+]
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+并在app01下__init__.py中导模块
+import pymysql
+
+pymysql.install_as_MySQLdb()
+
+# ===========================================================================================
+2).在models文件下创建列表
+
+from django.db import models
+# Create your models here.
+
+class User(models.Model):
+    name=models.CharField(max_length=32)
+    pwd=models.CharField(max_length=32)
+    email=models.EmailField()
+
+
+
+
+# ===========================================================================================
+2).在app01文件夹下创建middleware.py中
+from django.shortcuts import render, HttpResponse, redirect
+from django.http import JsonResponse
+from django.utils.deprecation import MiddlewareMixin
+
+
+class middle01(MiddlewareMixin):
+    def process_request(self, request):
+        print('request_process请求')
+        # 获取客户端浏览器ip
+        ip = request.META['REMOTE_ADDR']
+        import time
+        current_time = time.time()
+        ret = request.session.session_key
+        print(ret)
+        if not ret:
+            request.session[ip] = [current_time, None, 1]
+        else:
+            ll = request.session[ip]
+            # {'ip':[1s,none, 1]}
+            print(ll)
+            ll[2] += 1
+            ll[1] = current_time
+            print(ll)
+            request.session[ip] = ll
+            # {'ip':[1s,2s, 2]}
+            if (ll[1] - ll[0]) >= 60:
+                ll[0] = current_time
+                ll[2] = 1
+            if ll[2] > 3 and (ll[1] - ll[0]) <= 60: # [1542984420.560158, 1542984435.4771972, 4]
+                return HttpResponse('GUN')
+
+    def process_response(self, request, response):
+        return response
+
+
+# ===========================================================================================
+3).在url.py中写路径
+
+from django.conf.urls import url
+from django.contrib import admin
+
+from app01 import views
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    # url(r'^index/', views.index),
+    # url(r'^register', views.register),
+    # url(r'^login/', views.login),
+    # url(r'^shopping/', views.shopping),
+    # url(r'^logina/', views.Login.as_view()),
+    # url(r'^order/', views.Order.as_view()),
+    # url(r'^login/', views.login),
+    # url('^shopping/', views.shopping),
+    url('^$', views.test),
+]
+
+# ===========================================================================================
+4).在视图函数views.py中
+
+from django.shortcuts import render, HttpResponse, redirect
+from django.http import JsonResponse
+
+def test(request):
+    return render(request,'test.html')
+
+
+# ===========================================================================================
+5).在Template下test.html
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+</head>
+<body>
+<h1>xxxxx</h1>
+</body>
+</html>
