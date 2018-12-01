@@ -1,0 +1,360 @@
+# =============================总结========================================
+1 模版语法之变量:详见源码
+		-{{ 变量 }}:******重要******{#相当于print了该变量#}
+		-深度查询---->统一都用句点符 .
+	
+	2 模版之过滤器
+		-语法:{{第一个参数|过滤器名字:第二个参数}}
+		-常用过滤器:(详细用法见源码)
+			-length
+			-default
+			-slice
+			-date
+			-filesizeformat
+			-truncatechars
+			-truncatewords
+			-safe
+			-add
+	3 模版之标签
+		-{% 标签 %}
+		-for:forloop:对象(里面有好多东西:parentloop,last,first,counter....)忘记的话,	自己打印一下
+			empty:被循环的对象是空,才走它
+			for循环可以嵌套,也可以用if
+		-if:
+			{% if forloop.first %}
+				<p>第一次的我 </p>
+			{% elif forloop.last %}
+				<p>最后的我 </p>
+			{% else %}
+				<p>{{ foo }}</p>吧
+			{% endif %}
+		-with:重命名,应用在变量名过长
+		********都要有结束********
+		
+	4 自定义标签和过滤器
+		--***标签不能用在if判断,过滤器,可以用在if判断
+		-自定义过滤器
+			-1 先app是不是已经在setting中注册
+			-2 在app下创建一个templatetags(****名字不能变***)的文件夹(模块)
+			-3 在模块下创建一个py文件,名字随意:mytag.py
+			-4 # 第一步,导入template
+			   from django.template import Library
+			   # 第二步,定义一个叫register的变量=template.Library()
+			   register = Library()
+			-5 写一个函数,用@register.filter(name='yyy')装饰一下(可以指定别名)
+				def str_add(str1, str2): #一定要有返回值
+					# 业务逻辑很复杂
+					return str1 + str2
+			-6 在模板里:(新定定义的标签,过滤器,都要重启程序)
+				-{% load mytag %}
+				-{{'lqz'|str_add:'nb'}}
+		-自定义标签:
+			-1-4:前4步,根过滤器的定义完全一样
+			-5 只是装饰器不一样
+			@register.simple_tag()
+				def add_nb(value):
+					return value+'nb'
+			-6 在模板里:(多个参数,以空格区分)
+				-{% load mytag %}
+				-{% add_nb 'lqz'%}
+# ===========================早上总结===================================
+1 模板之变量---{{ }}
+		-支持数字,字符串,布尔类型,列表,字典---相当于对它进行了打印
+		-函数--->相当于加括号运行(不能传参数)
+		-对象--->内存地址,(如果重写__str__方法,打印的就是返回的内容)
+	2 过滤器
+		-length---计算长度
+		-default----设默认值
+		-filesizeformat---把数字转成文件大小格式
+		-截断字符---最少是三
+		-截断单词
+		-data----格式化日期类型
+		-add-----数字,字符串相加
+		-slice----切片,首,尾,步长 '1:-1:2'
+		-safe-----把前端代码渲染到页面,而不是直接显示
+	3 标签
+		-for  --用法跟python一样
+		-if   --用法跟python一样
+		-with --相当于取别名
+	4 自定义标签
+		-1 在app下创建一个模块,名字必须叫templatetags
+		-2 创建任意一个py文件,my_tags.py
+		-3 导入:from django.template import Library
+		-4 注册:register=Library()
+		-5 写一个函数,用register.simple_tag(name=可以写一个别名),装饰一下
+		-6 使用(重启)
+		-7 在模板里:{%load my_tags%}
+		-8 {% 函数名字或者别名 %},传参,用空格分割
+	5 自定义过滤器
+		-1 在app下创建一个模块,名字必须叫templatetags
+		-2 创建任意一个py文件,my_tags.py
+		-3 导入:from django.template import Library
+		-4 注册:register=Library()
+		-5 写一个函数,用register.filter(name=可以写一个别名),装饰一下
+		-6 使用(重启)
+		-7 在模板里:{%load my_tags%}
+		-8 {{ 函数名字或者别名 }},传参,最多传两个参数{{'参数一'|过滤器名字:'参数二'}}
+	6 过滤器可以用在if判断中,标签不能
+# =====================================================================
+1.在app01下创建templatetags文件夹，并创建mytag.py
+
+
+# 第一步,导入template
+from django.template import Library
+
+# 第二步,定义一个叫register的变量=template.Library()
+register = Library()
+
+
+# 第三步
+@register.filter(name='yyy')
+def str_add(str1, str2):
+    # 业务逻辑很复杂
+    return str1 + str2
+
+@register.simple_tag()
+def add_nb(value):
+    return value+'nb'
+
+@register.simple_tag()
+def add_3(value,value2,value3):
+    return value+value2+value3
+
+# =====================================================================
+
+2. 视图层views.py
+from django.shortcuts import render
+from django.http import JsonResponse
+
+
+# Create your views here.
+
+
+# def test(request):
+#     dic = {'name': '六'}
+#     return JsonResponse(dic,json_dumps_params={'ensure_ascii':False})
+
+
+def index(request):
+    name = 'lqz'
+    age = 18
+    ll = [1, 2, 'lqz', 'egon']
+    ll2=[]
+    dic2={}
+    tu = (1, 2, 3)
+    dic = {'name': 'lqz', 'age': 18, 'll': [1, 2, 4]}
+
+    # 函数
+    def test():
+        print('lqz')
+        return 'zhouxiang dsb'
+
+    # 在模板上相当于执行该函数,并打印
+    print(test())
+
+    # 类和对象
+    class Person():
+        def __init__(self, name, age):
+            self.name = name
+            self.age = age
+        def get_name(self):
+            return self.name
+        @classmethod
+        def cls_test(cls):
+            return 'cls'
+        @staticmethod
+        def static_test():
+            return 'static'
+        # 模板里不支持带参数
+        def get_name_cs(self,ttt):
+            return self.name
+    lqz=Person('lqz',18)
+    egon=Person('egon',18)
+    person_list=[lqz,egon]
+    person_dic={'lqz':lqz}
+
+    file_size=1024
+    import datetime
+    ctim=datetime.datetime.now()
+
+    h1='<h1>你好</h1>'
+    script='<script>alert(111)</script>'
+
+    # user='lqz'
+    user=''
+
+    # return render(request,'index.html',{'name':name})
+    # locals() 会把*该*视图函数内的变量,传到模板
+    return render(request, 'index.html', locals())
+
+
+# =====================================================================
+3.路由层
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    url(r'^index/$', views.index),
+]
+# =====================================================================
+
+4.模板层index.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<hr>
+{#模板语言注释:前端看不到#}
+{#相当于print了该变量#}
+<h1>模板语言之变量</h1>
+<p>字符串:{{ name }}</p>
+<p>数字:{{ age }}</p>
+<p>列表:{{ ll }}</p>
+<p>元祖:{{ tu }}</p>
+<p>字典:{{ dic }}</p>
+{#只写函数名:相当于函数名(),执行该函数#}
+<p>函数:{{ test }}</p>
+{#对象内存地址#}
+<p>对象:{{ lqz }}</p>
+<p>列表套对象:{{ person_list }}</p>
+<p>字典套对象:{{ person_dic }}</p>
+<hr>
+<h1>深度查询</h1>
+<p>列表第0个值:{{ ll.0 }}</p>
+<p>列表第3个值:{{ ll.3 }}</p>
+<p>字典取值:{{ dic.name }}</p>
+<p>字典取列表值:{{ dic.ll }}</p>
+{#再继续取值,继续点#}
+<p>对象取数据属性:{{ lqz.name }}</p>
+<p>对象取绑定给对象的函数属性:{{ lqz.get_name }}</p>
+<p>对象取绑定给类的函数属性:{{ lqz.cls_test }}</p>
+<p>对象取静态方法:{{ lqz.static_test }}</p>
+<p>把对象列表中egon年龄取出来:{{ person_list.1.age }}</p>
+{#拓展:不能调有参数的方法#}
+<p>字符串的方法:{{ name.upper }}</p>
+<hr>
+<h1>模板语言之过滤器</h1>
+{#后面就是个python中的函数,|前面的,是函数的第一个参数,冒号后面的是第二个参数#}
+<p>统计字符串长度:{{ name|length }}</p>
+<p>统计列表长度:{{ ll|length }}</p>
+<p>过滤器之默认值:{{ ll2|default:'没有值' }}</p>
+<p>
+    过滤器之filesizeformat--1:{{ 2013344444444444444444444445555444444444444444444444444444444444444444444444444444444444443|filesizeformat }}</p>
+<p>过滤器之filesizeformat--2:{{ file_size|filesizeformat }}</p>
+<p>过滤器之不使用date:{{ ctim }}</p>
+<p>过滤器之date:{{ ctim|date:'Y-m-d' }}</p>
+{#前闭后开区间#}
+<p>过滤器之slice:{{ ll|slice:'2:-1' }}</p>
+{#支持步长#}
+<p>过滤器之slice-字符串:{{ name|slice:'0:3:3' }}</p>
+{#三个起步#}
+<p>过滤器之truncatechars:{{ 'dafddfafgadfgaasdgadgfadaf'|truncatechars:5 }}</p>
+<p>过滤器之truncatewords:{{ '我 dfaf ga dfgaas 你 dgf adaf'|truncatewords:5 }}</p>
+<p>过滤器之不用safe:{{ h1 }}</p>
+<p>过滤器之用safe:{{ h1|safe }}</p>
+
+<p>过滤器之不用safe:{{ script }}</p>
+{#<p>过滤器之用safe:{{ script|safe }}</p>#}
+<p>过滤器之用add:{{ 12|add:'1' }}</p>
+<p>过滤器之用add:{{ 'egon'|add:'dsb' }}</p>
+
+<hr>
+<h1>模板语言之标签</h1>
+{#{% for foo in ll %}#}
+{#    {{ forloop }}#}
+{#<p>{{ forloop.first }}--->{{ forloop.counter0 }}--->{{ forloop.revcounter }}----->{{ foo }}</p>#}
+{#{% endfor %}#}
+
+{#{% for foo in ll %}#}
+{#    {% for i in person_list %}#}
+{#  取出外层是第几次循环#}
+{#        {{ forloop.parentloop.counter }}#}
+{#        <p>{{ forloop.first }}--->{{ forloop.counter0 }}--->{{ forloop.revcounter }}----->{{ foo }}</p>#}
+{#    {% endfor %}#}
+{#{% endfor %}#}
+{#**************循环的对象是空,才会走到empty,而不是对象里面的东西为空#}
+{#{% for foo in dic2 %}#}
+{#    <p>{{ foo }}</p>#}
+{#    {% empty %}#}
+{#    傻逼了#}
+{#{% endfor %}#}
+{#只循环字典的话,取到的是key值#}
+{#{% for foo in dic %}#}
+{#取到value的值#}
+{#{% for foo in dic.values %}#}
+{#取到key 和 value的值#}
+{#{% for k,foo in dic.items %}#}
+{#    <p>{{ k }}----->{{ foo }}</p>#}
+{#    {% empty %}#}
+{#    傻逼了#}
+{#{% endfor %}#}
+
+{#{% if user %}#}
+{#    <a href="">退出</a>#}
+{#    {% else %}#}
+{#    <a href="">登录</a>#}
+{#    <a href="">注册</a>#}
+{#{% endif %}#}
+
+{#for循环判断如果是第一次,打印第一次,其他打印正常值#}
+{% for foo in ll %}
+    {% if forloop.first %}
+        <p>第一次的我 </p>
+    {% elif forloop.last %}
+        <p>最后的我 </p>
+    {% else %}
+        <p>{{ foo }}</p>
+    {% endif %}
+{% endfor %}
+
+<hr>
+{#with 相当于取别名,作用:变量太长,可以简化#}
+{#{% with name as ttt %}#}
+{#    {{ ttt }}#}
+{#    {{ name }}#}
+{#    {{ user }}#}
+{##}
+{#{% endwith %}#}
+------
+{% with dic.ll.2 as ttt %}
+    {{ ttt }}
+
+    {{ ttt }}
+
+{% endwith %}
+
+************************for ,if,with 都要有结束******************
+<hr>
+<h1>自定义标签过滤器</h1>
+{% load mytag %}
+{#传多个参数的话:可以:'aaa:bb:cc',也可以:传列表#}
+<p>{{ 'lqz'|yyy:'nb' }}</p>
+<h4>使用自定义的标签</h4>
+
+<p>{% add_nb 'egon' %}</p>
+
+<p>{% add_3 'egon' 'is' 'dsb' %}</p>
+
+
+<hr>
+过滤器,可以用在if判断中
+{% if 'lqz'|yyy:'nb' %}
+<p>肯定是True</p>
+{% endif %}
+标签不能用在if判断(报错)
+{#{% if add_nb 'egon' %}#}
+{#    #}
+{#{% endif %}#}
+
+</body>
+</html>
+
+# =================================================================
+在项目下创建test.py测试
+import json
+dic={'name':'六'}
+ret=json.dumps(dic,ensure_ascii=False)
+print(ret) #{"name": "六"}
+
