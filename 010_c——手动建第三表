@@ -1,0 +1,202 @@
+	
+  # ==============================================================
+  1 inclusion_tag
+		-干什么用的?生成html的片段(动态,传参数,传数据)
+		-app下新建一个模块,templatetags
+		-创建一个py文件(mytag.py)
+		-from django.template import Library
+		-register=Library()   ----->register名字一定不能变
+		-写装饰器(标签,过滤器,inclusion_tag)
+		-@inclusion_tag('模板路径',name='重命名')
+		-def my_in():  不写,写多个,不写不传,写多个,按空格来传参
+		-	一堆逻辑处理,查数据库
+		-	ret=Book.object.all()
+			return {''books':ret}
+		-在模板中:
+			可以用books这个变量,渲染页面
+		-应用:
+			-在另一个模板中:
+			-{%load mytag.py%}
+			-{% my_in %}
+	2 defer,only
+		-defer---->除了指定字段之外
+		-only---->只查询几个字段
+		-比如:ret=Book.object.all().only('name')
+		-id始终会查
+		-结果是queryset对象,套book对象
+		-问:如果取price,发生了什么?
+		-它会再次查询数据库,对数据库造成压力
+	3 事务(原子性操作)
+		from django.db import transition
+		with transition.atomic():
+			sql1
+			sql2
+	4 choice
+		-模型表中某个字段,可以指定choice,用在选择不经常变的情况,经常变,尽量用数据库
+		    user_type=models.ForeignKey(to='Info', to_field='id',db_constraint=False)
+			#取出对应的汉字
+			# author对象.user_type.name
+			mychoice=((1,'男'),(2,'女'),(3,'其他'))
+			# dd = models.ForeignKey(to='Info', to_field='id')
+			#取出对应的汉字
+			dd = models.ForeignKey(choices=mychoice)
+	5 反向解析
+		-动态获取路径(根据名字)
+			-路由:    url(r'^inde/$', views.Test.as_view(),name='index'),
+					  url(r'^inde/(\d+)$', views.Test.as_view(),name='index'),
+			-在视图层:
+			def mytest(request):
+				# 用在视图层
+				url=reverse('index',args=(12,))
+				return redirect(url)
+			-在模板中用:
+				<a href="/index/">点我跳到index页面</a>
+				<a href="{% url 'index' 12 %}">点我跳到index页面</a>
+				{#这个位置相当于放了"/inde/"#}
+			
+			
+	6 多对多的关系,三种写法
+		-手动创建第三张表(不创建关联关系)
+			class Book(models.Model):
+				# 默认会创建id
+				name = models.CharField(max_length=32)
+			class Author(models.Model):
+				name = models.CharField(max_length=32)
+			class Book2Author(models.Model):
+				id = models.AutoField(primary_key=True)
+				book=models.ForeignKey(to='Book',to_field='id')
+				author=models.ForeignKey(to='Author',to_field='id')
+			-不管是插入和查询,删除,都很麻烦(一般不用)
+		-自动创建第三张表
+			-查询,插入,删除,都很方便
+			-缺点:字段是固定的,第三张表如果要添加字段,实现不了
+		-手动创建第三张表,建立关联关系
+			class Book(models.Model):
+				# 默认会创建id
+				name = models.CharField(max_length=32)
+				# 中介模型,手动指定第三张中间表是Book2Author
+				authors=models.ManyToManyField(to='Author',through='Book2Author',through_fields=('book','author'))
+			class Author(models.Model):
+				name = models.CharField(max_length=32)
+				def __str__(self):
+					return self.name
+			class Book2Author(models.Model):
+				id = models.AutoField(primary_key=True)
+				book=models.ForeignKey(to='Book',to_field='id')
+				author=models.ForeignKey(to='Author',to_field='id')
+				
+			-through:来指定我的第三张表是哪个
+			-through_fields:('book','author'),第一个值是:从中间表找到设置关联字段的表,通过哪个字段,第一个位置就写它
+			-终极总结:防止混了:关联字段就是表名小写,第一个值:就是当前表的表名小写
+			-查询,新增,删除,都很方便
+			-第三张表,可以添加别的字段
+	  # ==============================================================
+	
+	7 ajax
+		1 什么是ajax:异步的JavaScript和xml,跟后台交互,都用json
+		2 ajax干啥用的?前后端做数据交互:
+		3 之前学的跟后台做交互的方式:
+			-第一种:在浏览器窗口输入地址(get)
+			-第二种:用form表单提交数据
+		4 特点:
+			-异步(异步和同步的区别:同步是请求发过去,要等着回应;异步:不需要等回应,可以进行其他操作)
+			-局部刷新:
+		5 $.ajax({
+            url:'/index/',
+            type:'post',
+            //data:往后台提交的数据
+            data:{'name':'lqz','age':18},
+            //成功的时候回调这个函数
+            success:function (data) {
+                alert(data)
+            }
+        })
+		6 上传文件
+			模板层:
+			$("#btn").click(function () {
+				//上传文件,必须用FormData,生产一个formdata对象
+				var formdata=new FormData();
+				formdata.append('name',$("#name").val());
+				//取出文件$("#myfile")[0].files拿到的是文件列表,取第0个把具体的文件取出来
+				formdata.append('myfile',$("#myfile")[0].files[0]);
+
+				$.ajax({
+					url:'/files_ajax/',
+					type:'post',
+					//不预处理数据,(name=lqz&age=18)
+					processData:false,
+					//指定往后台传数据的编码格式(urlencoded,formdata,json)
+					//现在用formdata对象处理了,就不需要指定编码格式了,不要给我编码了
+					contentType:false,
+					data:formdata,
+					success:function (data) {
+						alert(data)
+
+					}
+				})
+
+			视图层:(跟form表单上传文件完全一样)
+			def files_ajax(request):
+				# 提交文件从,request.FILES中取,提交的数据,从request.POST中取
+				name=request.POST.get('name')
+				print(name)
+				dic_files = request.FILES
+				myfile = dic_files.get('myfile')
+				with open(myfile.name, 'wb') as f:
+					# 循环上传过来的文件
+					for line in myfile:
+						# 往空文件中写
+						f.write(line)
+				return HttpResponse('ok')
+			
+		7 基于ajax提交json格式数据
+			-模板层:
+			 $('#btn').click(function () {
+				var post_data={'name':$("#name").val(),'pwd':$("#pwd").val()};
+				console.log(typeof post_data);
+				// 如何把post_data这个字典,转成json格式字符串
+				//JSON.stringify相当于python中json.dumpus(post_data)
+				//pos是个字符串,json格式字符串
+				var pos=JSON.stringify(post_data);
+				console.log(typeof pos);
+				$.ajax({
+					url:'/json/',
+					type:'post',
+					data:pos,
+					contentType:'application/json',
+					success:function (data) {
+						//如果data是json格式字符串,如何转成对象(字典)?
+						//data=JSON.parse(data)
+						console.log(typeof data)
+						console.log(data)
+						var ret=JSON.parse(data)
+						console.log(typeof ret)
+						console.log(ret.status)
+						//alert(data)
+
+					}
+				})
+			})
+			-视图层:
+				def add_json(request):
+					if request.method=='GET':
+						return render(request,'json.html')
+					print(request.POST)
+					print(request.GET)
+					print(request.body)
+					import json
+					# res是个字典
+					res=json.loads(request.body.decode('utf-8'))
+					print(res)
+					print(type(res))
+					dic={'status':'100','msg':'登录成功'}
+					# return HttpResponse('ok')
+					# 返回给前台json格式
+					return HttpResponse(json.dumps(dic))
+					# return JsonResponse(dic)
+						
+			-重点:*****
+				- 请求的编码方式:
+					contentType:'application/json',
+				-响应回来解析的方式
+					dataType:'json',
