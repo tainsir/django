@@ -7,7 +7,7 @@
 		-path:传的路径,是准确路径
 			5个转换器-->path('test/<path:year>', views.re_test),
 			str,匹配除了路径分隔符（/）之外的非空字符串，这是默认的形式
-			int,匹配正整数，包含0。
+			int,匹配正整数，包含0。<int: year>
 			slug,匹配字母、数字以及横杠、下划线组成的字符串。
 			uuid,匹配格式化的uuid，如 075194d3-6885-417e-a8a8-6c931e272f00。
 			path,匹配任何非空字符串，包含了路径分隔符（/）（不能用？）
@@ -70,6 +70,9 @@
 				# 支持列表形式
 				return JsonResponse(ll,safe=False)
 		补充：爬虫需要从views中拿数据，request.META,是个字典
+			 HttpResponse对象--->render,redirect,HttpResponse,JsonResponse(返回json格式)
+			 反向解析--->在视图层:本质为了去除地址,重定向来用;在模板层:取出地址,为了发请求来用
+			 JsonResponse:JsonResponse(dic,json_dumps_params={'ensure_ascii':False})---中文显示编码问题
 	6 CBV和FBV
 		-基于类的视图
 			-1 路由层:url(r'^test/', views.Test.as_view()),  #父类view的方法，必带()
@@ -85,6 +88,11 @@
 		-基于函数的视图			
 		
 	7 简单文件上传
+		1 html页面上指定编码格式:enctype="multipart/form-data"
+		2 视图层:request.FILES(字典),可以根据名字,把文件取出来
+			-myfile=request.FILES.get('文件名字')--->得到文件对象
+		3 for循环文件对象,保存到本地,文件名字:myfile.name
+		
 		路由层：url('fileupload', views.fileupload)  #不加()
 		前端:
 			<form action="" method="post" enctype="multipart/form-data">
