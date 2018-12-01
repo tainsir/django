@@ -117,7 +117,7 @@ DATABASES = {
 '''
 # =================================
 因为django默认你导入的驱动是MySQLdb，可是MySQLdb 对于py3有很大问题，
-所以我们需要的驱动是PyMySQL 所以，我们只需要找到项目名文件下的__init__,在里面写入代码：
+所以我们需要的驱动是PyMySQL 所以，我们只需要找到项目名app文件下的__init__,在里面写入代码：
 import pymysql
 pymysql.install_as_MySQLdb()
 最后通过两条数据库迁移命令即可在指定的数据库中创建表 ：
