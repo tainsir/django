@@ -1,0 +1,139 @@
+# =======================================================================================
+
+1 简单配置
+		-第一个参数是正则表达式(如果要精准匹配:'^publish/$')
+		-第二个参数是视图函数(不要加括号)
+		-url(r'^admin/', admin.site.urls),
+	2 无名分组
+		-按位置传参
+		-分组之后,会把分组出来的数据,当位置参数,传到视图函数,所以,视图函数需要定义形参
+		-url(r'^publish/([0-9]{4})/([0-9]{2})$', views.publish),
+		-def publish(request,*args):   视图函数可以这样接收
+	3 有名分组
+		-按关键字传参
+		-有名分组之后,会把分组出来的数据,当关键字参数,传到视图函数,所以,视图函数需要定义形参,形参名字要跟分组的名字对应,与顺序无关
+		-url(r'^publish/(?P<year>[0-9]{4})/(?P<mounth>[0-9]{2})/$', views.publish),
+		-def publish(request, mounth,year):
+		*****有名分组和无名分组,不要混用
+	4 反向解析
+		-先命一个名:
+			-1 无参数:url(r'^publishadd133/$', views.publishadd,name='ddd'),
+			-2 无名分组:url(r'^publishadd/([0-9]{4})/([0-9]{2})/$', views.publishadd,name='ddd'),
+			-3 有名分组:url(r'^publishadd/(?P<year>[0-9]{4})/(?P<mounth>[0-9]{2})/$', views.publishadd,name='ddd'),
+		-在模板层:
+			-1 无参数:{% url 'ddd' %}
+			-2 无名分组的:{% url 'ddd' 2018 12 %}
+			-3 有名分组:{% url 'ddd' 2018 12 %}  还可以 {% url 'ddd' year=2018 mounth=12 %}
+			
+		-在视图层:
+			from django.shortcuts import reverse
+			在视图函数里:
+			1 无参数:url=reverse('ddd')
+			1 无名分组:url=reverse('ddd',args=(2018,12,))
+			1 有名分组:url=reverse('ddd',args=(2018,12,)) 还可以 url=reverse('ddd',kwargs={'year':2018,'mounth':12})
+	5 路由分发	
+		1 在不同的app里创建urls.py
+		2 在总路由 
+			-from django.conf.urls import include 
+			-url(r'^blog/',include('blog.urls')),
+			-url(r'^app01/',include('app01.urls')),
+		3 在不同的app的urls里配置路由关系	
+		***重点***总路由,不能加结束符$
+	6 名称空间
+		-url(r'^blog/',include('blog.urls',namespace='blog')),
+		-子路由:url(r'^publish/$', views.publish,name='test'),
+		-反向解析:
+			-视图层:url = reverse('blog:test')
+			-模板层:{% url 'app01:test'%}
+		***一般不要用***
+			子路由:url(r'^publish/$', views.publish,name='app01_test'),
+			
+	7 伪静态
+		-路由:url(r'^book/(?P<id>\d+.html)',views.book),
+		-访问:http://127.0.0.1:8000/book/4.html
+    
+   
+  # =======================================================================================
+  #=======================================================================================
+  # =======================================================================================
+在url.py文件中
+from django.conf.urls import url,include
+from django.contrib import admin
+
+
+from app01 import views
+# 总项目总url.py路由分发，
+# from app01 import urls as appurls
+# from blog import urls as blogurls
+urlpatterns = [
+    # url(r'^admin/', admin.site.urls),
+    # publish/匹配四位数字
+    url(r'^publish/[0-9]{4}/$', views.publish),
+    # 匹配任意长度的数字
+    # url(r'^publish/\d+/$', views.publish),
+    # url(r'publishadd', views.publishadd),
+    # url(r'^publish/([0-9]{4})/([0-9]{2})$', views.publish),
+    # url(r'^publish/(\d+)/$', views.publish),
+    # url(r'^publish/$', views.publish),
+    # # url(r'^publishadd133/([0-9]{4})/([0-9]{2})/$', views.publishadd,name='ddd'),
+    # url(r'^publishadd133/(?P<year>[0-9]{4})/(?P<mounth>[0-9]{2})/$', views.publishadd,name='ddd'),
+    # url(r'^blog/',include('blog.urls',namespace='blog')),
+    # url(r'^app01/',include('app01.urls',namespace='app01')),
+    # url(r'^book/(?P<id>\d+.html)',views.book),
+]
+# =======================================================================================
+在app01.py
+from django.shortcuts import render, HttpResponse,redirect,reverse
+
+# Create your views here.
+# def publish(request,year,mounth):
+# def publish(request,mounth,year):
+# def publish(request,*args):
+
+# publish(request,year=2018)
+
+# def publish(request, mounth,year):
+# def publish(request, *args,**kwargs):
+#     if request.method == 'GET':
+#         # print(year)
+#         # print(mounth)
+#         print(args)
+#         print(kwargs)
+#         return HttpResponse('publishok')
+#     elif request.method == 'POST':
+#         return HttpResponse('post')
+
+def publish(request):
+    if request.method == 'GET':
+        # return render(request, 'publish.html')
+        # url=reverse('ddd',args=(2018,12,))
+        url=reverse('test')
+        print(url)
+        return redirect(url)
+        # # return redirect('/publishadd/')
+        # # return render(request,'publish.html')
+
+def publishadd(request,year,mounth):
+    return HttpResponse('publishadd')
+
+
+def book(request,id):
+    return HttpResponse('book')
+
+# =======================================================================================
+两个app组件,
+app01.py中的url
+urlpatterns = [
+    url(r'^publish/$', views.publish,name='app01_test'),
+]
+app02.py中的url
+urlpatterns = [
+    url(r'^blogtest/$', views.test,name='test'),
+]
+publish.html页面
+<body>
+<a href="{% url 'app01:test' year=2018 mounth=12 %}">点我</a>
+</body>
+
+
+
