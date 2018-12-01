@@ -1,0 +1,152 @@
+  1 虚拟环境
+		1 用pychanrm创建--->files-->newproject--->选择虚拟环境
+		2 settings-->project创建
+		3 用命令行创建,详见https://www.cnblogs.com/liuqingzheng/p/9508851.html
+	2 django 2.0和django 1.0 路由层区别(*****url,re_path分组分出来的数据,是字符串)
+		-re_path:跟1.0的url用法相同
+		-path:传的路径,是准确路径
+			5个转换器-->path('test/<path:year>', views.re_test),
+			str,匹配除了路径分隔符（/）之外的非空字符串，这是默认的形式
+			int,匹配正整数，包含0。
+			slug,匹配字母、数字以及横杠、下划线组成的字符串。
+			uuid,匹配格式化的uuid，如 075194d3-6885-417e-a8a8-6c931e272f00。
+			path,匹配任何非空字符串，包含了路径分隔符（/）（不能用？）
+		-自定义转换器
+			1 定义一个类:
+				class MyCon:
+					# 写一个正则(regex)表达式
+					regex = '[0-9]{4}'
+					# 匹配出來的数据,会传到这里,retrun回去的,会被视图函数接收
+					def to_python(self, value):
+						return int(value)
+					# 反向解析用的
+					def to_url(self, value):
+						return '%04d' % value
+			2 from django.urls import register_converter
+			  register_converter(MyCon,'yyy')
+			3 path('test/<yyy:year>', views.re_test,name='test'),
+	2.1补充:
+		# 路径为假,不会加反斜杠
+		# APPEND_SLASH=False
+	3 视图层之HttpRequest对象
+		# 前台Post传过来的数据,包装到POST字典中
+		# request.POST
+		# 前台浏览器窗口里携带的数据,包装到GET字典中
+		# request.GET
+		# 前台请求的方式
+		# request.method
+		# post提交的数据,body体的内容,前台会封装成:name=lqz&age=18&sex=1
+		# request.body
+		# 取出请求的路径,取不到数据部分
+		# print(request.path)
+		# 取出请求的路径,能取到数据部分
+		# print(request.get_full_path())
+		# print(request.META)
+	4 视图层之HttpResponse对象
+		三件套:render,HttpResponse,redirect
+		render函数:
+			temp=Template('<h1>{{ user }}</h1>')
+			con=Context({'user':'lqz'})
+			ret=temp.render(con)
+			print(ret)
+			# return render(request,'index.html')
+			return HttpResponse(ret)
+		
+	5 视图层之JsonResponse对象
+		-导入:from django.http import JsonResponse
+		-视图函数中:
+			def test(request):
+				import json
+				# dic={'name':'lqz','age':18}
+				ll = ['name', 'age']
+				# 把字典转换成json格式,返回到前台
+				# return HttpResponse(json.dumps(dic))
+				# 把列表转换成json格式,返回到前台
+				# return HttpResponse(json.dumps(ll))
+				# 把字典转换成json格式,返回到前台
+				# return JsonResponse(dic)
+				# 报错,默认不支持列表形式
+				# return JsonResponse(ll)
+				# 支持列表形式
+				return JsonResponse(ll,safe=False)
+		补充：爬虫需要从views中拿数据，request.META,是个字典
+	6 CBV和FBV
+		-基于类的视图
+			-1 路由层:url(r'^test/', views.Test.as_view()),  #父类view的方法，必带()
+			-2 视图层
+				-导入:from django.views import View
+				-写一个类:
+					class Test(View):
+						def get(self, request):#一定要传request对象
+							return HttpResponse('get-test')
+
+						def post(self, request):
+							return HttpResponse('post-test')
+		-基于函数的视图			
+		
+	7 简单文件上传
+		路由层：url('fileupload', views.fileupload)  #不加()
+		前端:
+			<form action="" method="post" enctype="multipart/form-data">
+			{#<form action="" method="post" enctype="application/x-www-form-urlencoded">#}
+				<input type="file" name="myfile">
+				<input type="text" name="password">
+				<input type="submit" value="提交">
+			</form>
+		后台:
+			def fileupload(request):
+				if request.method=='GET':
+					return render(request,'fileupload.html')
+				if request.method=='POST':
+					# FILES
+					print(request.FILES)
+					print(type(request.FILES.get('myfile')))
+					# 从字典里根据名字,把文件取出来
+					myfile=request.FILES.get('myfile')
+					from django.core.files.uploadedfile import InMemoryUploadedFile
+					# 文件名字
+					name=myfile.name
+					# 打开文件,把上传过来的文件存到本地
+					with open(name,'wb') as f:
+						# for line in myfile.chunks():
+						for line in myfile:
+							f.write(line)
+					return HttpResponse('ok')
+	
+		补充:*****编码方式multipart/form-data或者:application/x-www-form-urlencoded传的数据,都可以从POST中取出来
+作业:
+	1 手动创建虚拟环境--用命令
+	2 往前台返回user字典:[{name:lqz,age:18},{name:lqz2,age:18}]
+	
+f# rom django.template import Template, Context
+# from django.http import JsonResponse
+
+# 		  if request.method=='GET':  #way1
+#         con = Context([{'name': 'lqz', 'age': 18}, {'name': 'lqz2', 'age': 18}])
+#         for i in con:
+#             return HttpResponse([i])
+#     way2
+		# con = Context([{'name': 'lqz', 'age': 18}, {'name': 'lqz2', 'age': 18}])
+#         # for i in con:
+#         #     return HttpResponse([i])
+#         ll=[{'name': 'lqz', 'age': 18}, {'name': 'lqz2', 'age': 18}]
+#         return  JsonResponse(ll, safe=False)
+	
+	3 写一个文件上传:如果文件名字重复,不要覆盖,并且放到项目根路径的media文件夹下
+	 取当前时间，用md5生成随机字符串，处理文件名字
+# 	 from xx.settings import *
+	 # def file_upload(request):
+#     if request.method == 'GET':
+#         return render(request, 'file_upload.html')
+#     if request.method == 'POST':
+#         my_file = request.FILES.get('my_file')
+#         old_name = my_file.name
+#         new_str = bytes(old_name + str(time.time()), encoding='utf-8')
+#         m2 = hashlib.md5()
+#         m2.update(new_str)
+#         # 在根目录下创建一个media文件夹，拼接路径，将上传的文件保存到该文件夹下
+#         new_name = os.path.join(BASE_DIR, 'media', m2.hexdigest() + '.jpg')
+#         with open(new_name, 'wb') as f:
+#             for line in my_file:
+#                 f.write(line)
+#         return HttpResponse('ok')
