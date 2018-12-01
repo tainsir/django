@@ -1,0 +1,121 @@
+昨日回顾:
+	1 ajax 什么是ajax:异步的JavaScript 和xml
+	2 特点:异步,局部刷新
+	3 简单的与后台交互:(携带数据:可以拼到url上---->从GET中取,)
+		$.ajax({
+			url:请求的地址,
+			type:请求方式,(post,get....)
+			//contentType:'application/json',(默认:urlencoded)
+			data:{},往后台发送的数据
+			success:function (data){
+				//data的数据类型,不一定
+				//异步的,成功返回,才能回调
+			
+			}
+			
+		})
+		-携带数据:
+				-可以拼到url上---->从GET中取	
+				-默认urlencoded编码和formdata,放到data中的数据,------>POST
+	4 前端:
+		-input,取出value的值
+			取值:$("#id").val()
+			赋值:$("#id").val(要赋的值)
+	5 上传文件
+		var formdata=new FormData()
+		formdata.append(key,value)
+		//jq取文件
+		//$('#myfile')[0].files[0]
+		$.ajax({
+			url:请求的地址,
+			type:请求方式,(post,get....)
+			contentType:false,
+			processData:false,
+			data:formdata,往后台发送的数据
+			success:function (data){
+				//data的数据类型,不一定
+				//异步的,成功返回,才能回调
+			
+			}
+			
+		})
+		默认处理数据:name=lqz&age=18
+		后台:
+			-request.FILES----->字典
+			-根据名字取出文件,for循环文件存到本地
+			-上传的文件:保存到相对路径下
+	6 上传json格式
+		-对象转成json格式字符串(类比json.dumps())
+			-JSON.stringify(对象)
+		-json格式字符串,转成对象
+			-JSON.parse(json格式字符串)(类比json.loads())
+		$.ajax({
+			url:请求的地址,
+			type:请求方式,(post,get....)
+			contentType:'application/json',
+			data:json格式字符串,
+			success:function (data){
+				//data的数据类型,不一定
+				//异步的,成功返回,才能回调
+			
+			}
+			
+		})
+		--application/json请求的时候,写了,后台django程序,一读到是这种编码格式,它就不处理数据了
+		--从body中取出b'',再做处理
+		
+	
+基于ajax的登录验证:
+	-后台:
+		-前台如果是urlencoded编码,直接从POST中取出数据
+		-前台如果是json编码,从body中取出,处理
+		-返回用:JsonResponse(dic),也可以用HttpRespone,(前端相应处理)
+	-前台:
+		-取到id为error的元素,把data.msg的内容,放到里面,然后给它设置样式,颜色是红色
+		-$("#error").html(data.msg).css({'color':'red','margin-left':'10px'})
+		-定时器:
+			就是一个函数,传了两个参数,一个匿名函数,一个时间,
+			在匿名函数中写要处理的逻辑:
+			-清空span标签中的内容
+			-$("#error").html("")
+	
+	
+	
+今日内容:
+
+	分页器:
+		-干啥的?数据量大的话,可以分页获取,查看
+		基本写法:
+			后端:
+				-总数据拿出来
+				-生成分页器Paginator对象(对象里有属性和方法)
+				-生成当前页的对象,current_page=paginator.page(当前页码)
+				-取出前台传过来的页码,current_page_num = int(request.GET.get('page'))
+					-需要有异常捕获
+					-捕获到,把当前页码设置成第一页
+			
+			
+			前端:
+				-for循环总页列表
+				-点某一页,跳到指定页码,<li><a href="/index/?page={{ foo }}">{{ foo }}</a></li>
+				
+				-上一页,下一页的处理:需要有判断,判断是否有上一页,下一页
+		-终极版:
+			#判断总页码数是否大于11,不大于11,走else:把总页码数,赋给page_range(前端循环页码列表,循环的就是page_range)
+			if paginator.num_pages >11:
+				# 当前页码数-5大于1的时候,page_range应该是,page_range就是1到11页?
+				if current_page_num-5<1:
+					page_range=range(1,12)
+				elif current_page_num+5>paginator.num_pages:
+					# 当前页码数+5大于总页码数,总页码-10,到总页码+1之间
+					page_range=range(paginator.num_pages-10,paginator.num_pages+1)
+				else:
+					#其他情况,左5,右6推算,也就是:range(current_page_num - 5, current_page_num + 6)
+					page_range = range(current_page_num - 5, current_page_num + 6)
+			else:
+				#小于11,有多少页,就显示多少页
+				page_range=paginator.page_range
+			
+		
+	批量插入输入:
+		-models.Book.objects.bulk_create(ll)
