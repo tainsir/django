@@ -1,0 +1,84 @@
+今日内容
+	forms组件
+		-forms是什么?
+			就是一个类,可以校验字段(前台传过来的字段)
+		-怎么用:
+		-校验字段功能:
+			-先写一个类,继承Form
+			from django.shortcuts import render, HttpResponse
+			from django import forms
+			# 写一个类,要校验那些字段,就是类的属性
+			class MyForm(forms.Form):
+				# 定义一个属性,可以用来校验字符串类型
+				# 限制最大长度是8,最小长度是3
+				name=forms.CharField(max_length=8,min_length=3)
+				pwd=forms.CharField(max_length=8,min_length=3,required=True)
+				# 校验是否是邮箱格式
+				email=forms.EmailField()
+			-使用:
+				#实例化产生对象,传入要校验的数据(字典)
+				myform=MyForm(request.POST)
+				# is_valid如果是true表示校验成功,反之,校验失败
+				if myform.is_valid():
+					# 校验通过的数据
+					print(myform.cleaned_data)
+					return HttpResponse('校验成功')
+				else:
+					print(myform.cleaned_data)
+					#校验失败的信息
+					print(myform.errors)
+			-注意:校验的字段,可以多,但是不能少
+		-渲染模板
+			-第一中方式:(灵活性最高)
+				<form action="" method="post" >
+					<p>用户名: {{ myform.name }}</p>
+					<p>密码: {{ myform.pwd }}</p>
+					<p>邮箱: {{ myform.email }}</p>
+					<input type="submit" value="提交">
+				</form>
+			-第二种方式:for循环form对象(用的比较多):
+				<form action="" method="post" >
+					{% for foo in myform %}
+						<p>{{ foo.label }}:{{ foo }}</p>
+					{% endfor %}
+					<input type="submit" value="提交">
+				</form>
+			-第三种方式(不建议用):
+				<form action="" method="post" >
+
+			{#    {{ myform.as_p }}#}
+				{{ myform.as_ul }}
+				<input type="submit" value="提交">
+				</form>
+				
+		-渲染错误信息
+			- myforms有errors
+			-属性(name)也有errors
+			-错误信息,变成中文:
+				- error_messages={'max_length': '最长是8', 'min_length': '最短是3', 'required': '这个必须填','invalid': '不符合邮箱格式'}
+			-给input标签指定样式,指定格式:
+				 -widget=widgets.TextInput(attrs={'class':'form-control'})
+			-模板,渲染错误信息:<span>{{ myform.name.errors.0 }}</span>
+		-局部钩子校验
+			-定义一个函数,名字叫:clean_字段名字,内部,取出该字段,进行校验,如果通过,将该字段返回,如果失败,抛异常(ValidationError)
+			-   def clean_name(self):
+					# self:当前form对象
+					name = self.cleaned_data.get('name')
+					if name.startswith('sb'):
+						# 失败,抛异常
+						raise ValidationError('不能以傻逼开头')
+					# 正常,把name返回
+					return name
+		-全局钩子
+			#重写clean方法
+			def clean(self):
+				#程序能走到该函数,前面校验已经通过了,所以可以从cleaned_data中取出密码和确认密码		
+				pwd=self.cleaned_data.get('pwd')
+				re_pwd=self.cleaned_data.get('re_pwd')
+				#进行自己的校验
+				if pwd==re_pwd:
+					#通过,直接返回cleaned_data
+					return self.cleaned_data
+				else:
+					#失败,抛异常(ValidationError)
+					raise ValidationError('两次密码不一致')
