@@ -1,0 +1,478 @@
+
+回顾:
+	# =================================================================================
+  
+昨日回顾:
+	1 基于双下划线的跨表查询
+		一对一
+			-查询egon的家庭地址			-Author.objeces.all().filter(name='egon').values('authordetail__addr')
+			-AuthorDetail.objeces.all().filter(author__name='egon').values('addr)
+		一对多:
+			-查询主键为1的书籍的出版社所在的城市
+			-Book.objeces.filter(pk=1).values('publish__addr')
+			-Publish.objeces.filter(book__pk=1).values('addr')
+
+		多对多
+			-查询金瓶梅所有作者的名字以及手机号
+			-Book.objeces.filter(name='金瓶梅').values('authors__name','authors__authordetail__phone')
+			-Author.objeces.filter(book__name='金瓶梅').values('name','authordetail__phone')
+		连续跨表:
+			-跟上面一样
+			-效率问题:基于哪个表,效率都一样
+	2 聚合
+		-聚合函数
+		-from django.db.models import Count,Avg,Min,Max,Sum
+		-查询所有图书的总价格
+		-Book.objeces.all().aggregate(c=Sum('price'))
+		-查询结果不是queryset对象了,不能再继续点了
+		-aggregate可以传多个
+	3 分组查询
+		-统计每一本书作者个数
+		-Book.objeces.all().values('pk').annotate(c=Count('authors__pk')).values('name','c')
+		-Book.objeces.annotate(c=Count('authors')).values('name','c')
+		-统计以红开头,作者个数大于一的书
+		-Book.objeces.all().filter(name__startswith='红').annotate(c=Count('authors')).filter(c__gt=1).values('name','c')
+		-*********终极总结:
+		-values 在前,表示group by哪个字段,在后,表示取值
+		-filter在前,表示where(先过滤),在后,表示having		
+	4 F函数
+		-为了等号(=)不能直接传字段,用F函数包裹一下,就可以传了
+		-查询评论数大于阅读数的所有书
+		-from django.db.models import F
+		-Book.objeces.all().filter(commit_num__gt=F('reat_num'))
+	5 Q函数
+		-表示与(&)或(|)非(~)的关系
+		-出版日期在2016或者2017并且名字包含python的所有书
+		-Book.objeces.filter((Q(pub_date__year=2016)|Q(pub_date__year=2017))&Q(name__icontains='python'))
+		-Book.objeces.filter(Q(pub_date__year=2016)|Q(pub_date__year=2017),name__icontains='python')
+		-如果出现Q 对象，它必须位于所有关键字参数的前面		
+	6 常用和非常用字段
+		-AutoField   ---->一个类中(表中)最多有一个
+		-models.CharField(max_length=32,db_index=True)
+		-models.DecimalField(max_digits=5, decimal_places=2)
+		-IntegerField(default=0)
+		-DateField()
+			-auto_now   ----->修改的时候,会把当前时间更新上
+			-auto_now_add  --->新增数据时,会把当前时间记录上
+	7 字段参数
+		-null  
+		-default
+		-unique
+		-db_index
+		-db_constraint
+		-on_delete   --->2.0以后,这个字段必须传
+		-related_name ---->基于对象反向查询,用于替换表名小写_set
+		-related_query_name ---->基于双下划线反向查询,用于替换表名小写
+	8 元信息
+		-在模型类中加入一个类
+			class Meta:
+				-指定表名
+				-指定联合唯一
+				-指定联合索引
+		
+		
+今日内容
+	图书管理系统
+		-<select name="authors" class="form-control" multiple>
+		{% for author in authors %}
+			{% if author in book.authors.all %}
+				<option value="{{ author.id }}" selected>{{ author.name }}</option>
+			{% else %}
+				<option value="{{ author.id }}">{{ author.name }}</option>
+			{% endif %}
+		{% endfor %}
+		</select>
+  # =============================================================================================
+  
+昨日回顾:
+	1 表模型创建(约束,外键管理--->不写脏数据)
+		-OneToOneField ---一对一 
+		-ForeignKey----一对多
+			-级联删除CASCADE
+			-设置为空:SET_NULL
+			-什么都不做:DO_NOTHING
+			ForeignKey(to=Publish, to_field='id',on_delete=models.CASCADE)
+		-ManyToManyField ------>多对多(自动创建第三张表)
+		-AutoField(primary_key=True)
+		-CharField
+		-EmailField
+	2 基于对象的多表查询
+		-子查询(多次查询)
+		-正向  ---->关联字段在那个表,从那个表往外查
+		-反向  ---->关联字段不在那个表,从那个表往外查
+		-一对一
+			-正向查询:按字段
+			-反向查询:按表名小写
+		-一对多	
+			-正向查询:按字段
+			-反向查询:按表名小写_set.all()------>queryset对象
+		-多对多
+			-正向查询:按字段.all()
+			-反向查询:按表名小写_set.all()------>queryset对象
+	3 基于双下划线的一对一查询
+		-正向按字段
+		-反向按表名小写
+		-查询lqz的手机号
+		Author.objects.filter(name='lqz').values('authordetail__phone')
+		AuthorDetail.object.filter(author__name='lqz').values('phone')
+	4 查看orm转换的sql
+		-queryset.query
+		-日志
+	5 增删改
+		增:
+			-一对一
+				-可以传对象,可以传id
+			-一对多
+				-可以传对象,可以传id
+			-多对多:
+				-add()   --->可以传对象,可以传id,可以传多个
+		删:
+			-多对多
+				-remove()  --->可以传对象,可以传id,可以传多个
+				-clear()    --->全部清空
+		改:
+			-多对多
+				-set()  ---->先清空,再添加,传参,只能传列表
+			
+	
+
+今日内容:
+	
+	1基于双下划线的跨表查询
+		套路一样,用__跨表
+		-一对多
+		-多对多
+	2 聚合查询
+		-聚合函数
+		    from django.db.models import Avg,Count,Max,Min,Sum
+			# 计算所有图书的平均价格
+			# ret=Book.objects.all().aggregate(Avg('price'))
+			# print(ret)
+		
+	
+	3分组查询
+		终极总结:
+			values在前,表示group by,在后,表示取值
+			filter在前,表示过滤(where),在后,表示having(对分组之后的结果再进行过滤)
+	4 F查询与Q查询
+
+		-F为了字段=后面的值,不能放字段,所以用F函数包裹一下就可以了
+		-Q为了构造与&,或|,非~的关系
+		
+	5 常用字段:必须记住,非常用字段,了解即可
+	6 orm字段参数:
+		-null  可以为空
+		-unique  唯一性约束
+		-default 默认值
+		-db_index 为该字段建索引
+		-只给日期类型和时间类型用
+			-auto_now_add    新增数据时,默认把当前时间存入
+			-auto_now        修改的时候,默认把当前时间存入
+	7 关系字段
+		ForeignKey
+			-to  关联哪个表
+			-to_field 关联的字段
+			-related_name 反向操作时，使用的字段名，用于代替原反向查询时的'表名_set'。(一般不要用)
+			-related_query_name :基于双下划线的反向查询之前按表名小写(一般不要用)
+			-on_delete:models.CASCADE,models.SET_NULL
+			-db_constraint:db_constraint=False代表,不做外键关联
+
+  # =============================================================================================
+  # =============================================================================================
+  # =============================================================================================
+  1 HTTP协议:(重点)
+		-请求
+			-请求首行
+				-GET /index HTTP/1.1
+			-请求头部(在django框架中,可以从META中取出来)
+				-key:value------>\r\n分割
+			-请求体(post请求发的数据)   -----\r\n\r\n
+				-往后台传数据的时候,有编码方式(urlencoded,form-data,json/text)
+				-默认urlencoded---->name=lqz&name=18---->从POST中取出
+				-form-data---上传文件,数据在body体中的格式---->也从POST中取出
+				-json---->从POST中取不出来,只能从body中取出,然后反序列化
+		-响应
+			-响应首行(用空格区分)
+				-HTTP/1.1 200 OK   ---\r\n				
+			-响应头
+				-key:value
+			-响应体
+				-html/css/js代码
+	2 web框架
+		-django:大而全
+		-flask:轻量级,第三方的插件
+		-tornado:异步非阻塞
+		-wsgi:Web Server Gateway Interface web服务网关接口---是一个协议
+		-django测试阶段用的:wsgiref
+			import socket
+			def server_run():
+				soc = socket.socket()
+				soc.bind(('127.0.0.1', 8008))
+				soc.listen(5)
+				while True:
+					conn, addr = soc.accept()
+					recv_data = conn.recv(1024)
+					
+					----->django框架
+					路由层
+					模板层
+					模型层
+					
+					conn.send(('HTTP/1.1 200 OK\r\n\r\n%s'%data).encode('utf-8'))
+					conn.close()
+	3 django框架所在位置:
+		from wsgiref.simple_server import make_server
+		def mya(environ, start_response):
+			# print(environ)
+			start_response('200 OK', [('Content-Type', 'text/html')])
+		   
+			return [b'404']
+		class Test():
+			pass
+		test=Test()
+		if __name__ == '__main__':
+			myserver = make_server('127.0.0.1', 8011, test)
+			print('监听8010')
+			myserver.serve_forever()
+			
+	4 django简介
+		-pip3 install django==1.11.09 -i 指定国内源
+		-安装成功后,会在script文件夹下多django-admin.exe
+		-用来创建django项目
+		-django-admin startproject 项目名字(到指定文件夹下)
+		-cd到项目目录下,可以创建app,可以运行项目,可以数据库迁移
+		-创建app:python3 manage.py startapp app的名字
+		-运行项目app:python3 manage.py runserver
+		-数据库迁移1:python3 manage.py makemigrations
+		-数据库迁移2:python3 manage.py migrate
+		
+		
+	5 mvc和mtv
+		-django 是mtv模式:
+			-M:model   ---->模型
+			-T:Template  --->模板
+			-V:view    ---->视图
+		-mvc模式:
+			-M:model---->模型,数据库相关
+			-v:view----->模板---->页面相关
+			-C:controller--->控制器:url+view
+		本质上:MTV就是MVC
+			
+	6 Django请求生命周期
+		详见博客
+	7 路由层
+		一 Django中路由的作用
+			-根据客户请求的路径,分发到不同的视图函数
+		二 简单的路由配置
+			-url('正则',函数,默认值,name)
+			url(r'^author_update/', author.author_update,{'id':1}),
+		三 有名分组,无名分组
+			-利用正则分组:
+				-有名分组:(?P<名字>\d+),分出的名字,会以关键字参数的形式,传到视图函数
+				-无名分组:(\d+)分出的名字,会以位置参数的形式,传到视图函数
+			
+		四 路由分发
+			- url(r'^author_update/', include('子路由的路径')),
+			-可以传子路由的路径字符串----推荐这种
+			-可以传子路由的py文件
+		五 反向解析
+			-url(r'^author_update/', author.author_update,name='test'),
+			-视图函数重定向,或者模板中写死了路径
+			-可以用反向解析来动态生成路径
+			-视图层:(有参数)
+				-url=reverse('test',args=(参数一,参数二,))
+			-模板层:(有参数)
+				{%url 'test' 参数一 参数二%}
+		六 名称空间
+			-路径重命名,可能会重复,反向解析,就会出问题
+			-指定名称空间
+			-url(r'^author_update/',include('子路由路径',namespace='app01')),
+			-reverse('app01:test')
+		七 django2.0版的path
+			-re_path根url一样
+			-path是准确路径
+			-5个转换器:int,str,slug,path,uuid
+			-自定义转换器
+				class Test:
+					regex='正则'
+					def to_python(self,value):
+						逻辑处理
+						return value
+					def to_url(self,value)
+						return '%04d'%value
+			-使用:
+				-register_converter(converters.FourDigitYearConverter, 'yyyy') 
+				-<yyy:year>
+		八 伪静态:
+	8 视图层
+		-请求
+			-request对象:POST,GET(post提交数据,浏览器地址栏,也可以携带参数),method(大写),body(post提交的所有数据),path(路径),get_full_paht()-->(全路径,包含数据),FILES(前台传过来的文件,它是一个字典),META
+		-响应:
+			-render,HttpResponse,redirect
+			-JsonResponse-->往前台返回一个json格式数据(本质:继承了HttpResponse,封装了json)
+			-不能转换列表,想转换,safe=False
+			-编码方式
+		-cbv和fbv
+			基于类的视图
+				-路由:url(r'^test/', views.Test.as_view()),
+				-视图:
+					class Test(View):
+						def dispatch(self, request, *args, **kwargs):
+							# 加点东西
+							# request=request.POST
+							response=super().dispatch(request, *args, **kwargs)
+							# 加点东西
+							return response
+						def get(self,request):
+							return HttpResponse('get')
+			基于函数的视图
+								
+	9 模版层
+		一 模版简介
+			渲染页面
+		二 模版语法之变量
+			-{{ 变量 }}
+			-{{深度查询用.}}
+		三 模版之过滤器
+			-自带过滤器
+				{{ 参数|过滤器名字:参数 }}
+				-date
+				-add
+				-length
+				-upper
+				-lower
+			-可以自定义过滤器
+		四 模版之标签(都要有结束)
+			-{% for %}
+				-循环字典:(在模板里,方法不能加括号)
+				 {% for key,value in 字典.items%}
+				-forloop对象:parentloop,last,first,count,count0,revcountcount,revcount0
+			-{% if %}
+				-跟python if判断一样
+				-可以嵌套在for循环中
+				-{% elif%}
+				-{% else%}
+			-{% with%}
+				-重命名
+		五 自定义标签和过滤器
+			-先注册app
+			-在app下创建一个templatetags的模块
+			-在模块下新建一个py文件
+			-from django.template import Library
+			-register=Library()------>名字必须叫register
+			-标签:
+				-用装饰器装饰 @register.simple_tag
+			-过滤器
+				-用装饰器装饰 @register.filter
+			-过滤器最多只能传两个参数,标签可以传多个
+			-在模板中使用:
+				-{% load py文件名%}
+				-{{参数|自定义的过滤器:参数}}----->过滤器
+				-{% 自定义的标签名 参数一 参数二 %}----->标签
+			
+		补充:inclusion_tag	
+			-先注册app
+			-在app下创建一个templatetags的模块
+			-在模块下新建一个py文件
+			-from django.template import Library
+			-register=Library()------>名字必须叫register
+			-使用装饰器:@register.inclusion_tag('test.html')
+			-写个函数my_inclusion,返回字典
+			-模板里就能取到字典,渲染模板
+			-使用:
+				在模板中:{%load py文件名%}
+				{% my_inclusion 参数%}
+		六 模版导入和继承
+			-在模板中
+				-{% include '模板的名字'%}----->不要再以html开头,结尾了
+			-继承
+				-写一个母版,留几个盒子
+					-{%block 名字%}
+					 {%endblock%}
+				-其他模板继承该母版,扩写盒子
+				 {%extends '母版名字'%}
+				 {%block 名字%}
+					写内容
+				 {%endblock%}
+				-block.super--->可以显式盒子中原来有的东西
+				-多个盒子,跟写的位置无关
+		七 静态文件相关
+			- 基本配置<link rel="stylesheet" href="/static/mycss.css">
+			-static配置:
+				-{%load static%}
+				-{% static 'mycss.css'%}
+				-<link rel="stylesheet" href="{% static 'mycss.css'%}">
+			-get_static_prefix配置
+			-{% load static %}
+			-<link rel="stylesheet" href="{% get_static_prefix %}mycss.css">
+			
+	10 模型层
+		-单表操作
+			-增:两种方式,create,对象.save()
+			-删:两种方式:queryset,对象都要删除方法
+			-修改:queryset的update方法,对象修改--->没有update,用save
+			-查:
+				-查询api
+				-模糊查询:基于双下划线
+		-多表操作
+			-增加:
+				一对一:authordetail=对象----authordetail_id=id
+				一对多:可以传对象,可以传id
+				多对多:
+					-add,remove,
+						-*args--可以传对象,可以传id
+					-clear()清空所有
+					-set
+						-传一个可迭代对象(可以传对象,可以传id)
+			-删除:如果设置了级联删除,就会级联删除
+			-查询
+				-正向:关联字段在那个表,从哪个表往外查,是正向
+				-反向:反过来
+				-基于对象
+					-正向按字段
+					-反向
+						-一对一 :表名小写
+						-其他:表名小写_set
+					-子查询,多条查询
+				-基于双下划线
+					-核心:__连表
+					-聚合:Count,Sum,Max.... aggregate
+					-分组:annotate
+						-总结:
+							value在前表示group by,在后,表示取值
+							filter在前,表示where,在后,表示having
+					-F函数,Q函数
+						-F函数,因为等号后面不能传字段,所以用F函数包裹一下
+						-Q函数:表示与&  或|   非~  关系
+		-常用,非常用字段
+			-常用的记住,非常用的知道
+			-dateField类型:auto_now和auto_add_now
+		常用参数:
+			-级联删除:2.0以后,必须显示指定
+			-唯一性
+			-索引
+		元信息:
+			-重名名表名
+			-联合索引
+			-联合唯一
+补充事务:
+	from django.db import transaction
+	with transaction.atomic():
+		# 两条create
+		pass
+补充choice:
+	-在模型表中定义mychoice=((1,'男'),(2,'女'),(3,'其他'))
+	-在字段上用:dd = models.IntegerField(choices=mychoice)
+	-取对应的文字:
+		-在视图层:(get_字段名_display())
+			sex=author.get_dd_display()
+			
+补充defer和only(数据库优化)
+	only:只取我指定的字段,返回值是queryset里套对象,只是对象里只有指定的字段
+	defer:反过来
+				
+				
+	
+
+		
+				
