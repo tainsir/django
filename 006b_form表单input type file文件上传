@@ -1,0 +1,126 @@
+# ==========================================================================================
+在url.py
+
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    # url(r'^test/', views.test),
+    # url(r'^test/', views.Test.as_view()),
+    url(r'^fileupload/', views.fileupload),
+]
+
+# ==========================================================================================
+在view.py
+from django.shortcuts import render, HttpResponse, redirect
+
+from django.template import Template, Context
+from django.http import JsonResponse
+# Create your views here.
+
+
+# def test(request):
+#     print(type(request))
+#     from django.core.handlers.wsgi import WSGIRequest
+# 前台Post传过来的数据,包装到POST字典中
+# request.POST
+# 前台浏览器窗口里携带的数据,包装到GET字典中
+# request.GET
+# 前台请求的方式
+# request.method
+# post提交的数据,body体的内容
+# request.body
+# 取出请求的路径,取不到数据部分
+# print(request.path)
+# 取出请求的路径,能取到数据部分
+# print(request.get_full_path())
+# print(request.META)
+#  post提交数据格式,放到body体中
+# name=lqz&age=18&sex=1
+# return HttpResponse('ok')
+
+
+# def test(request):
+#     if request.method=='GET':
+#         return render(request,'index.html')
+#     if request.method=='POST':
+#         print(request.body)
+#         return HttpResponse('post')
+
+# render执行原理
+# def test(request):
+#     if request.method=='GET':
+#         temp=Template('<h1>{{ user }}</h1>')
+#         con=Context({'user':'lqz'})
+#         ret=temp.render(con)
+#         print(ret)
+#
+#         # return render(request,'index.html')
+#         return HttpResponse(ret)
+
+
+# jsonresponse测试
+# def test(request):
+#     import json
+#     # dic={'name':'lqz','age':18}
+#     ll = ['name', 'age']
+#     # 把字典转换成json格式,返回到前台
+#     # return HttpResponse(json.dumps(dic))
+#     # 把列表转换成json格式,返回到前台
+#     # return HttpResponse(json.dumps(ll))
+#     # 把字典转换成json格式,返回到前台
+#     # return JsonResponse(dic)
+#     # 报错,默认不支持列表形式
+#     # return JsonResponse(ll)
+#     # 支持列表形式
+#     # return JsonResponse(ll,safe=False)
+
+
+# ************CBV***********写法
+# from django.views import View
+#
+# class Test(View):
+#     def get(self, request):
+#         return HttpResponse('get-test')
+#
+#     def post(self, request):
+#         return HttpResponse('post-test')
+
+
+# ***********文件上传*************
+def fileupload(request):
+    if request.method=='GET':
+        return render(request,'fileupload.html')
+    if request.method=='POST':
+        # FILES
+        print(request.FILES)
+        print(type(request.FILES.get('myfile')))
+        # 从字典里根据名字,把文件取出来
+        myfile=request.FILES.get('myfile')
+        from django.core.files.uploadedfile import InMemoryUploadedFile
+        # 文件名字
+        name=myfile.name
+        # 打开文件,把上传过来的文件存到本地
+        with open(name,'wb') as f:
+            # for line in myfile.chunks():
+            for line in myfile:
+                f.write(line)
+        return HttpResponse('ok')
+        
+ # ==========================================================================================
+在fileupload.html中
+
+<body>
+<form action="" method="post" enctype="multipart/form-data">
+{#<form action="" method="post" enctype="application/x-www-form-urlencoded">#}
+    <input type="file" name="myfile">
+    <input type="text" name="password">
+    <input type="submit" value="提交">
+</form>
+</body>
+ # ==========================================================================================
+在index.html中
+
+<form action="" method="post">
+    <input type="text" name="name">
+    <input type="text" name="age">
+    <input type="submit" value="submit">
+</form>
