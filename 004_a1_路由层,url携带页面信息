@@ -51,8 +51,85 @@
 	7 伪静态
 		-路由:url(r'^book/(?P<id>\d+.html)',views.book),
 		-访问:http://127.0.0.1:8000/book/4.html
-    
-   
+	8 Django 默认这个参数为 APPEND_SLASH = True。 作用就是自动在网址结尾加'/',
+		# 为假,不会加反斜杠
+		# APPEND_SLASH=False
+		
+		from mysite.views import hello
+			urlpatterns = patterns('',
+			('^hello/$', hello),
+			)
+		因定义了hello/结尾  http://example.com/hello  自动转到  http://example.com/hello/
+		当 seetings.py 设置为 APPEND_SLASH = False 时，访问 http://example.com/hello 将会返回 404。
+		如果不想要后面的 / ,可以在 urls.py 定义成 '^hello$' 这样的形式。
+	
+	9.django 2.0和django 1.0 路由层区别(*****url,re_path分组分出来的数据,是字符串)
+		-re_path:跟1.0的url用法相同
+		-path:传的路径,是准确路径
+			5个转换器-->path('test/<path:year>', views.re_test),
+			str,匹配除了路径分隔符（/）之外的非空字符串，这是默认的形式
+			int,匹配正整数，包含0。
+			slug,匹配字母、数字以及横杠、下划线组成的字符串。
+			uuid,匹配格式化的uuid，如 075194d3-6885-417e-a8a8-6c931e272f00。
+			path,匹配任何非空字符串，包含了路径分隔符（/）（不能用？）
+		-自定义转换器
+		
+			1 定义一个类:（在urls.py文件中）
+				class MyCon:
+					# 写一个正则(regex)表达式
+					regex = '[0-9]{4}'
+					# 匹配出來的数据,会传到这里,retrun回去的,会被视图函数接收
+					def to_python(self, value):
+						return int(value)
+					# 反向解析用的
+					def to_url(self, value):
+						return '%04d' % value
+			2 from django.urls import register_converter
+			  register_converter(MyCon,'yyy')
+			3 path('test/<yyy:year>', views.re_test,name='test'),
+# =============================================	
+#（在urls.py文件中）
+		from django.contrib import admin
+		from django.urls import path, re_path,register_converter
+		from app01 import views
+
+		# 自定义转换器
+		# 1 定义一个类
+		class MyCon:
+		    # 写一个正则表达式
+		    regex = '[0-9]{4}'
+		    # 匹配出來的数据,会传到这里,retrun回去的,会被视图函数接收
+		    def to_python(self, value):
+			return value
+		    # 反向解析用的
+		    def to_url(self, value):
+			return '%04d' % value
+		register_converter(MyCon,'yyy')
+		urlpatterns = [
+		    # re_path---->就是我原来的url
+		    # re_path('正则',视图函数)
+		    # path传的第一个参数,不是正则,准确的路径,不支持正则
+		    # re_path('^test/(?P<year>\d+)',views.re_test),
+		    # path('test/<path:year>', views.re_test),
+		    # path('test/<yyy:year>', views.re_test,name='test'),
+		    path('test/', views.re_test,),
+# =============================================	
+# 在view.py文件中
+from django.shortcuts import render,HttpResponse,reverse
+
+# Create your views here.
+
+# def re_test(request,year):
+#     print(year)
+#     print(type(year))
+#     url=reverse('test',args=(9,))
+#     print(url)
+#     return HttpResponse('ok')
+
+def re_test(request):
+    return HttpResponse('ok')
+
+	
   # =======================================================================================
   #=======================================================================================
   # =======================================================================================
