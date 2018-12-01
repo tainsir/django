@@ -3,11 +3,14 @@ ORM即Object Relational Mapping，全称对象关系映射。
 1、使用ORM的优缺点
 优点：
 不用写sql,不会sql的人也可以写程序
-
 开发效率高
-
 缺点：
 可能sql的效率低
+1.1
+orm能干和不能干的事
+		1 能创建数据表,新增,删除字段
+		2 不能创建数据库
+
 2、使用方法
 在settings.py里配置:
 DATABASES = {
@@ -36,12 +39,17 @@ class User(models.Model):
 数据库迁移
 #在cmd窗口中，切到工程所在目录下,输入以下命令
 
+方式一
 python3 manage.py makemigrations  
 #记录一下数据库的变化记录一下数据库的变化
-
 python3 manage.py migrate      
 #将变化同步到数据库中
-
+方式二
+tools--->Run manage.py Task 
+		  python3 manage.py makemigrations
+		  只需要敲命令:makemigrations(记录数据库的修改记录)
+		  python3 manage.py migrate
+		  只需要敲命令:migrate(把数据同步到数据库)
 # ================================================
 二、ORM简单使用
 1、修改表结构：
@@ -68,6 +76,130 @@ phone=models.CharField(max_length=64,default='120')
 注意：！！！
 在以后开发中删除字段需要经过慎重考虑，因为一个字段往往会由大量的数据，而删除该字段，该字段所对应的所有数据都会被删除
 """
+# =================================================================
+***重点****:
+		1 单表查询所有用户:models.User.objects.all()
+			得到的是 queryset对象(当成列表),列表里面,一个一个的对象[user1,user2]
+		2 render(request, 'userlist.html', {'user_list': ret})
+		3 模板里:   {% for user in user_list %}
+						#要循环的内容	
+							{{user.name}}
+					 {% endfor%}
+		4 get请求携带参数:
+			http://127.0.0.1:8000/deleteuser/?id=1
+			后台取值:request.GET.get('id')
+					request.GET['id']
+		5 orm删除记录 models.User.objects.filter(id=id).delete()
+			返回值:影响的行数
+		6 前台post提交的数据取值:name=request.POST.get('name')
+		7 orm保存:
+			两种方式:
+			1 user=models.User.objects.create(name=name,password=pwd,address=addr)
+			2 user=models.User(name=name,password=pwd,address=addr)
+			  user.save()
+		8 orm查询单条数据:user=models.User.objects.filter(id=id).first()
+		9 orm的修改 models.User.objects.filter(id=id).update(name=name,password=pwd,address=addr)
+		
+# =================================================================
+2 数据的增删改查
+		-增(1):User.objects.create(address='')
+		-增(2):实例化产生一个user对象,user对象的save方法
+		id与name是and关系，filter()后得到一个queryset对象.first()后得到一个对象，即一个列表
+		-删:User.objects.filter(id=1,name='lqz').first().delete()  
+		
+		-删:User.objects.filter(id=1,name='lqz').delete()
+		-改:User.objects.filter(id=1,name='lqz').update()
+		-查:User.objects.all()
+		    user=User.objects.filter(name='lqz')
+			user.name
+3 前后台交互
+		-id=1&name='lqz'&
+		<form action="/updateuser/?id={{ user.id }}" method="post">
+			<p><input type="hidden" name="id" value="{{ user.id }}"></p>
+			<p>用户名: <input type="text" name="name" value="{{ user.name }}"></p>
+			<p>密码: <input type="text" name="password" value="{{ user.password }}"></p>
+			<p>地址: <input type="text" name="addr" value="{{ user.address }}"></p>
+			<input type="submit" value="提交">
+		</form>
+# =============================================================
+# from APP01 import models
+# 新增用户
+# 方式一
+# ret= models.User.objects.create(name=name, password=pwd, address=addr)
+# 方式二
+# user=models.User(name=name, password=pwd, address=addr)
+# user.save()
+# user.name就是存的用户名
+
+# 修改用户
+# models.User.objects.filter(id=id).update(name=name, password=pwd, address=addr)
+
+
+# =============================================================
+# html页面
+<body>
+<table border="1">
+    <thead>
+    <tr>
+        <th>id</th>
+        <th>name</th>
+        <th>password</th>
+        <th>addr</th>
+        <th>删除</th>
+        <th>编辑</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for user in user_list %}
+        <tr>
+            <td>{{ user.id }}</td>
+            <td>{{ user.name }}</td>
+            <td>{{ user.password }}</td>
+            <td>{{ user.address }}</td>
+            # 路径携带用户信息,/deleteser/?id={{user.id}}
+            <td><a href="/deleteuser?id={{ user.id }}">删除</a></td>
+            <td><a href="/updateuser?id={{ user.id }}">编辑</a></td>
+        </tr>
+    {% endfor %}
+
+    </tbody>
+
+    <a href="/adduser/">新增用户</a>
+</table>
+</body>
+
+# =============================================================
+# action:提交到后台的地址三种写法:
+# 				1 http://127.0.0.1:8000/login
+# 				2 /login/   推荐用
+# 				3 空
+# form表单提交修改用户
+action
+<form action="http://127.0.0.1:8000/login" method="post">
+    <p>用户名: <input type="text" name="name"></p>
+    <p>密码: <input type="password" name="password"></p>
+    <p>地址: <input type="text" name="addr"></p>
+    <input type="submit" value="提交">
+</form>
+
+# =============================================================
+# 2 视图层:
+# 		1 request.method  ----前台提交过来请求的方式'GET', 'POST'
+# 		2 request.POST(相当于字典)----post形式提交过来的数据,(http请求报文的请求体重)
+# 		3 request.POST.get('name') ----推荐用get取值(取出列表最后一个值)
+# 		4 request.POST.getlist('name')-----取出列表所有的值_
+# 		5 前台get方式提交的数据,从request.GET字典里取
+
+# 3.链接数据库(防止注入,推荐以下写法)
+# 		cur.execute('select * from user where name=%s and password=%s ',[name,pwd])
+
+# =============================================================
+
+
+
+
+
+
 2、字段类型介绍：
 自定义自增列：models.AutoField(primary_key=True)
 
