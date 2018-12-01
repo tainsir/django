@@ -1,0 +1,195 @@
+#===========================================================================
+1 模版导入-->写了一个好看的组件,可以复用,
+		1 写一个模板
+		2 在模板中:{% include '模板的名字'%}
+	2 模板的继承
+		1 写一个母版,留一个可扩展的区域(盒子),可以留多个盒子(留的越多,可扩展性越高)
+			{%block 名字%}
+				可以写内容
+			{%endblock%}
+		2 在子模板中使用:
+			{%block 名字%}
+				子模板的内容
+			{%endblock 名字%}
+		
+	3 静态文件相关
+		1 写死静态文件:<link rel="stylesheet" href="/static/css/mycss.css">
+		2 使用 static标签函数:
+			-{%load static%}
+			#static返回值,会拼上传参的路径
+			-{% static "传参"%}
+		3 使用get_static_prefix 标签
+			-{%load static%}
+			#get_static_prefix返回值是:静态文件的地址,相当于/static/
+			-{% get_static_prefix %}css/mycss.css
+	4 单表操作;
+		-数据迁移命令:
+			-python3 manage.py makemigrations   --->只是对变化做一个记录,记录文件在app的migrations
+			-python3 manage.py migrate   ---->把更改提交到数据库
+			-python3 manage.py showmigrations  ---->查看那个没有提交到数据库
+			
+		-查询api
+			<1> all():                  查询所有结果			  			  
+			<2> filter(**kwargs):       它包含了与所给筛选条件相匹配的对象		  
+			<3> get(**kwargs):          返回与所给筛选条件相匹配的对象，返回结果有且只有一个，如果符合筛选条件的对象超过一个或者没有都会抛出错误。 
+			<4> exclude(**kwargs):      它包含了与所给筛选条件不匹配的对象	 
+			<5> order_by(*field):       对查询结果排序('-id')	  
+			<6> reverse():              对查询结果反向排序			  
+			<8> count():                返回数据库中匹配查询(QuerySet)的对象数量。	  
+			<9> first():                返回第一条记录	  
+			<10> last():                返回最后一条记录		  
+			<11> exists():              如果QuerySet包含数据，就返回True，否则返回False	 
+			<12> values(*field):        返回一个ValueQuerySet——一个特殊的QuerySet，运行后得到的并不是一系列
+										model的实例化对象，而是一个可迭代的字典序列
+			<13> values_list(*field):   它与values()非常相似，它返回的是一个元组序列，values返回的是一个字典序列			 
+			<14> distinct():            从返回结果中剔除重复纪录
+			
+		-基于双下划线的模糊查询
+			Book.objects.filter(price__in=[100,200,300])
+			Book.objects.filter(price__gt=100)
+			Book.objects.filter(price__lt=100)
+			Book.objects.filter(price__gte=100)
+			Book.objects.filter(price__lte=100)
+			Book.objects.filter(price__range=[100,200])
+			Book.objects.filter(title__contains="python")
+			Book.objects.filter(title__icontains="python")
+			Book.objects.filter(title__startswith="py")
+			Book.objects.filter(pub_date__year=2012)
+#===========================================================================
+#===========================================================================
+#===========================================================================
+#1 url.py
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    url(r'^index/', views.index),
+    url(r'^template_test/', views.template_test),
+    url(r'^template_test1/', views.template_1),
+    url(r'^template_test2/', views.template_2),
+    url(r'^static_test/', views.static_test),
+]
+#=============================
+2 view.py
+from django.shortcuts import render
+
+# Create your views here.
+from django.template import Library
+from django.utils.safestring import mark_safe
+# 测试打印对象时,打印出姓名
+def index(request):
+    class Person():
+        def __init__(self,name):
+            self.name=name
+        def __str__(self):
+            return '我的名字是:%s'%self.name
+
+    lqz=Person('lqz')
+    print(lqz)
+    html='<h1>标题</h1>'
+    # 后台处理html标签
+    html=mark_safe(html)
+
+
+    return render(request,'index.html',locals())
+
+# 模板导入相关
+def template_test(request):
+    return render(request,'template_test.html')
+
+# 模板继承相关
+def template_1(request):
+    return render(request,'template_1.html')
+
+
+def template_2(request):
+    return render(request,'template_2.html')
+# 静态文件相关
+def static_test(request):
+    return render(request,'static_test.html')
+#=============================
+3.base.html
+<style>
+        .head {
+            height: 60px;
+            background: #1b6d85;
+        }
+        .content{
+            margin-top: 10px;
+        }
+    </style>
+<body>
+<div class="head"></div>
+<div class="container-fluid content">
+    <div class="row">
+        <div class="col-md-3">
+#==========
+           {% include 'left.html' %}
+
+        </div>
+        <div class="col-md-9">
+            <div class="right_top" style="height: 70px;background: pink">
+# =========
+                {% block content_top %}
+                
+                {% endblock %}
+            </div>
+            <div class="right_top" style="height: 70px;background: #3e8f3e">
+
+            </div>
+# =========
+           {% block content %}
+                我是母版的内容
+            {% endblock %}
+
+        </div>
+    </div>
+</div>
+
+</body>
+#=============================
+在static_test.py
+<head>
+    <meta charset="UTF-8">
+{#    <link rel="stylesheet" href="/static/css/mycss.css">#}
+    {% load static %}
+{#    <link rel="stylesheet" href="{% static 'css/mycss.css' %}">#}
+    <link rel="stylesheet" href="{% get_static_prefix %}css/mycss.css">
+{#    <link rel="stylesheet" href="/static12555/css/mycss.css">#}
+    <title>Title</title>
+</head>
+
+# ===========================
+template_1.py
+{% extends 'base.html' %}
+
+
+{% block content %}
+    <p>这是9的区域</p>
+    <p>这是9的区域</p>
+    {{ block.super }}
+    <p>这是9的区域</p>
+    <p>这是9的区域</p>
+    <p>这是9的区域</p>
+    <p>这是9的区域</p>
+    {{ block.super }}
+{% endblock content%}
+
+
+
+{% block content_top %}
+    我是模版一内容頭部
+{% endblock content_top%}
+
+# ===========================
+template_2.py
+
+{% extends 'base.html' %}
+
+{% block content %}
+    
+    <p>这是模板2的9的区域</p>
+    <p>这是模板2的9的区域</p>
+    <p>这是模板2的9的区域</p>
+    <p>这是模板2的9的区域</p>
+    <p>这是模板2的9的区域</p>
+    <p>这是模板2的9的区域</p>
+{% endblock %}
