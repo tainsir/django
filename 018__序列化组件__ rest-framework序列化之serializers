@@ -1,0 +1,185 @@
+# ========================================================================================
+
+简单使用：
+models.py文件
+# 正常的orm创建表模型操作
+from django.db import models
+
+class Publish(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    address = models.CharField(max_length=64)
+    email = models.EmailField()
+
+
+class AuthorDetail(models.Model):
+    id = models.AutoField(primary_key=True)
+    phone = models.CharField(max_length=32)
+    address = models.CharField(max_length=64)
+
+
+class Author(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    sex = models.CharField(max_length=32)
+    authordetail = models.OneToOneField(to='AuthorDetail', to_field='id')
+
+
+class Book(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32, db_index=True)
+    price = models.DecimalField(max_digits=5, decimal_places=2)
+    publish_date = models.DateField(auto_now_add=True)
+    publish = models.ForeignKey(to=Publish, to_field='id', on_delete=models.CASCADE)
+    authors = models.ManyToManyField(to=Author)
+
+    def __str__(self):
+        return self.name
+
+# ========================================================================================
+
+MySerializer.py文件，自定义的序列化类，需要继承from rest_framework import serializers类
+from rest_framework import serializers
+from app01 import models
+
+
+class AuthorDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.AuthorDetail
+        fields = '__all__'
+
+
+class AuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Author
+        fields = '__all__'
+
+    authordetail = serializers.SerializerMethodField()
+
+    def get_authordetail(self, obj):
+        author_detail = obj.authordetail
+        a = AuthorDetailSerializer(author_detail, many=False)
+        return a.data
+
+
+class PublishSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Publish
+        fields = '__all__'
+
+
+class BookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Book
+        fields = '__all__'
+
+    publish = serializers.SerializerMethodField()
+
+    def get_publish(self, obj):
+        return obj.publish.name
+
+    authors = serializers.SerializerMethodField()
+
+    def get_authors(self, obj):
+        ret = obj.authors.all()
+        ss = AuthorSerializer(ret, many=True)
+        return ss.data
+
+# ========================================================================================
+在views.py视图函数中的具体使用
+from django.shortcuts import render
+from rest_framework.views import APIView
+from app01 import models, MySerialize
+from django.http import JsonResponse
+
+
+# Create your views here.
+
+
+class Books(APIView):
+    def get(self, request, *args, **kwargs):
+        book_list = models.Book.objects.all()
+        books = MySerialize.BookSerializer(book_list, many=True)
+        return JsonResponse(books.data, safe=False)
+
+    def post(self, request, *args, **kwargs):
+        name = request.data.get('name')
+        price = request.data.get('price')
+        publish_date = request.data.get('publish_date')
+        publish = request.data.get('publish')
+        book_obj = models.Book.objects.create(name=name, price=price, publish_id=publish)
+        author_list = request.data.getlist('author')
+        book_obj.authors.add(*author_list)
+        return JsonResponse({'msg': 'ok'})
+
+    def put(self, request, pk, *args, **kwargs):
+        name = request.data.get('name')
+        price = request.data.get('price')
+        publish_date = request.data.get('publish_date')
+        publish = request.data.get('publish')
+        models.Book.objects.filter(pk=pk).update(name=name, price=price, publish_id=publish, publish_date=publish_date)
+        author_list = request.data.getlist('author')
+        book_obj = models.Book.objects.filter(pk=pk).first()
+        book_obj.authors.set(author_list)
+        return JsonResponse({'msg': 'ok'})
+
+    def delete(self, request, pk, *args, **kwargs):
+        models.Book.objects.filter(pk=pk).delete()
+        return JsonResponse({'msg': 'ok'})
+
+
+
+class Authors(APIView):
+    def get(self, request, *args, **kwargs):
+        ret = models.Author.objects.all()
+        author_list = MySerialize.AuthorSerializer(ret, many=True)
+        return JsonResponse(author_list.data, safe=False)
+
+    def post(self, request, *args, **kwargs):
+        name = request.data.get('name')
+        sex = request.data.get('sex')
+        phone = request.data.get('phone')
+        address = request.data.get('address')
+        author_obj = models.AuthorDetail.objects.create(phone=phone, address=address)
+        models.Author.objects.create(name=name, sex=sex, authordetail=author_obj)
+        return JsonResponse({'msg': 'ok'})
+
+    def put(self, request, pk, *args, **kwargs):
+        name = request.data.get('name')
+        sex = request.data.get('sex')
+        phone = request.data.get('phone')
+        address = request.data.get('address')
+        models.AuthorDetail.objects.filter(pk=pk).update(phone=phone, address=address)
+        models.Author.objects.filter(pk=pk).update(name=name, sex=sex)
+        return JsonResponse({'msg': 'ok'})
+
+    def delete(self, request, pk, *args, **kwargs):
+        models.Author.objects.filter(pk=pk).delete()
+        models.AuthorDetail.objects.filter(pk=pk).delete()
+        return JsonResponse({'msg': 'ok'})
+
+
+class Publishers(APIView):
+    def get(self, request, *args, **kwargs):
+        ret = models.Publish.objects.all()
+        publish_list = MySerialize.PublishSerializer(ret, many=True)
+        return JsonResponse(publish_list.data, safe=False)
+
+    def post(self, request, *args, **kwargs):
+        name = request.data.get('name')
+        address = request.data.get('address')
+        email = request.data.get('email')
+        models.Publish.objects.create(name=name, address=address, email=email)
+        return JsonResponse({'msg': 'ok'})
+
+    def put(self, request, pk, *args, **kwargs):
+        name = request.data.get('name')
+        address = request.data.get('address')
+        email = request.data.get('email')
+        models.Publish.objects.filter(pk=pk).update(name=name, address=address, email=email)
+        return JsonResponse({'msg': 'ok'})
+
+    def delete(self, request, pk, *args, **kwargs):
+        models.Publish.objects.filter(pk=pk).delete()
+        return JsonResponse({'msg': 'ok'})
+
