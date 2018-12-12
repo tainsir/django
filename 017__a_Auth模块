@@ -1,0 +1,135 @@
+Auth模块
+一、Auth模块是什么？
+Auth模块是Django自带的用户认证模块，可以快速的实现，登录，注销，修改密码
+# ==================================================================================
+二、Auth模块的简单使用
+Auth模块自带一张 auth_user 表
+创建用户:
+# 使用命令行创建超级用户
+# 在pycharm自带的终端输入
+python3 manage.py createsuperuser
+# 回车之后会让你输入字段信息，用户名、密码、邮箱等，邮箱允许为空
+
+ps：添加的密码字段会自动加密，所以不能直接在数据库表内进行操作
+# 在 view.py 视图层中创建用户
+# 先导入表模型
+from django.contrib.auth.models import User
+
+# 自定义一个注册函数，接收用户输入注册信息创建用户
+def register(request):
+    # 用户信息，从前台传过来，从request中去取出
+    
+    # 创建超级用户
+    #user = User.objects.create_superuser(username=name,password=pwd...)
+    # 创建普通用户
+    user = User.objects.create_user(username=name,password=pwd...)
+    
+# ===========================================
+2. 用户校验
+# 导入auth模块
+from django.contrib import auth
+# ===========================================
+authenticate()
+
+# 提供用户认证功能，即验证用户名及密码是否正确，如果认证成功，会返回一个user对象，
+# 通过判断user对象，来判断用户是否可以登录
+user = auth.authenticate(request, username=name, password=pwd)
+# ===========================================
+
+login(HttpRequest, user)
+# 当authenticate函数验证通过时，即表示用户可以登录时
+# 使用login函数登录，该函数接收一个HttpRequest对象，以及通过验证的user对象。
+# 本质就是在后端为该用户产生相关的session数据
+if user:
+    auth.login(request,user)
+    return HttpResponse('登录成功')
+else:
+     return HttpResponse('用户名或密码错误')
+# ===========================================
+
+logout(request)
+# 使用该函数，会将当前请求的session信息清除，即该用户注销
+def logout(request):
+  auth.logout(request)
+# ===========================================
+
+is_authenticated()
+# 用来判断当前请求是否通过了认证，返回True 或者 False
+ret = request.user.is_authenticated()
+# 可以在前台通过判断 ret ，来判断用户当前状态，显示不同的页面效果
+# ===========================================
+
+login_required
+from django.contrib.auth.decorators import login_required
+@login_required
+def my_view(request):
+  ...
+
+# 若用户没有登录，则会跳转到django默认的 登录URL '/accounts/login/ ' 并传递当前访问url的绝对路径 (登陆成功后，会重定向到该路径)。
+
+# 如果需要自定义登录的URL，则需要在settings.py文件中通过LOGIN_URL进行修改。
+
+LOGIN_URL = '/login/'  # 这里配置成你项目登录页面的路由
+
+# ===========================================
+check_password(password) 与 set_password(password)
+# check_password(password)
+# auth 提供的一个检查密码是否正确的方法，需要提供当前请求用户的密码。密码正确返回True，否则返回False。
+
+# set_password(password)
+# auth 提供的一个修改密码的方法，接收 要设置的新密码 作为参数。
+# 注意：设置完一定要调用用户对象的save方法！！！
+
+
+# 修改密码的简单示例
+@login_required
+def set_password(request):
+    user = request.user
+    old_password = request.POST.get('old_password', '')
+    new_password = request.POST.get('new_password', '')
+    repeat_password = request.POST.get('repeat_password', '')
+
+    ret = user.check_password(old_password)
+    # 验证旧密码是否正确
+    if ret:
+        if not new_password:
+                err_msg = '新密码不能为空'
+            elif new_password != repeat_password:
+                err_msg = '两次密码不一致'
+            else:
+                user.set_password(new_password)
+                user.save()
+                return redirect("/login/")
+        else:
+            err_msg = '原密码输入错误'
+    content = {
+        'err_msg': err_msg,
+    }
+    return render(request, 'set_password.html', content)
+# ===========================================
+
+User对象的属性
+
+User对象属性：username， password
+**is_staff **： 用户是否拥有网站的管理权限.
+**is_active **： 是否允许用户登录, 设置为 False，可以在不删除用户的前提下禁止用户登录。
+
+# =======================================================================================================
+三、扩展默认的 auth_user 表
+虽然auth模块贼好用，但是自带的 auth_user 表中字段只有固定的那几个，在实际应用中不能较好的满足需求
+所以，我们可以通过继承内置的 AbstractUser  类，来定义一个自己的Model 类
+# 在 model.py 中
+from django.contrib.auth.models import AbstractUser
+class UserInfo(AbstractUser):
+    """
+    用户信息表
+    """
+    phone = models.CharField(max_length=11, null=True, unique=True)
+    # 等等各种你想要添加的字段
+
+注意:
+按上面的方式扩展了内置的auth_user表之后，一定要在settings.py中告诉Django，我现在使用我新定义的UserInfo表来做用户认证。写法如下：
+# 引用Django自带的User表，继承使用时需要设置
+AUTH_USER_MODEL = "app名.UserInfo"
+
+一旦我们指定了新的认证系统所使用的表，我们就需要重新在数据库中创建该表，而不能继续使用原来默认的auth_user表了。
