@@ -4,6 +4,8 @@
 		-第一个参数是正则表达式(如果要精准匹配:'^publish/$')
 		-第二个参数是视图函数(不要加括号)
 		-url(r'^admin/', admin.site.urls),
+		-url(r'^login/(?P<pk>.*)',views.login.as_view()) #添加匹配所有
+		-url(r'^login/(?P<pk>\d+)',views.login.as_view()) #添加匹配1个或多个数字
 	2 无名分组
 		-按位置传参
 		-分组之后,会把分组出来的数据,当位置参数,传到视图函数,所以,视图函数需要定义形参
