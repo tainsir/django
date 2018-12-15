@@ -1,0 +1,316 @@
+#==================================================================================================
+#==============================================今日总结====================================================
+forms组件
+		-forms是什么?
+			就是一个类,可以校验字段(前台传过来的字段)
+		-怎么用:
+		-校验字段功能:
+			-先写一个类,继承Form
+			from django.shortcuts import render, HttpResponse
+			from django import forms
+			# 写一个类,要校验那些字段,就是类的属性
+			class MyForm(forms.Form):
+				# 定义一个属性,可以用来校验字符串类型
+				# 限制最大长度是8,最小长度是3
+				name=forms.CharField(max_length=8,min_length=3)
+				pwd=forms.CharField(max_length=8,min_length=3,required=True)
+				# 校验是否是邮箱格式
+				email=forms.EmailField()
+			-使用:
+				#实例化产生对象,传入要校验的数据(字典)
+				myform=MyForm(request.POST)
+				# is_valid如果是true表示校验成功,反之,校验失败
+				if myform.is_valid():
+					# 校验通过的数据
+					print(myform.cleaned_data)
+					return HttpResponse('校验成功')
+				else:
+					print(myform.cleaned_data)
+					#校验失败的信息
+					print(myform.errors)
+			-注意:校验的字段,可以多,但是不能少
+		-渲染模板
+			-第一中方式:(灵活性最高)
+				<form action="" method="post" >
+					<p>用户名: {{ myform.name }}</p>
+					<p>密码: {{ myform.pwd }}</p>
+					<p>邮箱: {{ myform.email }}</p>
+					<input type="submit" value="提交">
+				</form>
+			-第二种方式:for循环form对象(用的比较多):
+				<form action="" method="post" >
+					{% for foo in myform %}
+						<p>{{ foo.label }}:{{ foo }}</p>
+					{% endfor %}
+					<input type="submit" value="提交">
+				</form>
+			-第三种方式(不建议用):
+				<form action="" method="post" >
+
+			{#    {{ myform.as_p }}#}
+				{{ myform.as_ul }}
+				<input type="submit" value="提交">
+				</form>
+				
+		-渲染错误信息
+			- myforms有errors
+			-属性(name)也有errors
+			-错误信息,变成中文:
+				- error_messages={'max_length': '最长是8', 'min_length': '最短是3', 'required': '这个必须填','invalid': '不符合邮箱格式'}
+			-给input标签指定样式,指定格式:
+				 -widget=widgets.TextInput(attrs={'class':'form-control'})
+			-模板,渲染错误信息:<span>{{ myform.name.errors.0 }}</span>
+		-局部钩子校验
+			-定义一个函数,名字叫:clean_字段名字,内部,取出该字段,进行校验,如果通过,将该字段返回,如果失败,抛异常(ValidationError)
+			-   def clean_name(self):
+					# self:当前form对象
+					name = self.cleaned_data.get('name')
+					if name.startswith('sb'):
+						# 失败,抛异常
+						raise ValidationError('不能以傻逼开头')
+					# 正常,把name返回
+					return name
+		-全局钩子
+			#重写clean方法
+			def clean(self):
+				#程序能走到该函数,前面校验已经通过了,所以可以从cleaned_data中取出密码和确认密码		
+				pwd=self.cleaned_data.get('pwd')
+				re_pwd=self.cleaned_data.get('re_pwd')
+				#进行自己的校验
+				if pwd==re_pwd:
+					#通过,直接返回cleaned_data
+					return self.cleaned_data
+				else:
+					#失败,抛异常(ValidationError)
+					raise ValidationError('两次密码不一致')
+
+
+
+#============================================昨日回归======================================================
+昨日回顾:
+	forms组件:
+		-校验数据(最重要)
+			-先定义一个类(继承Form)
+			-写一些要校验的字段(好多类型)
+			-字段(对象)有一些属性(最长多少,最短多少,是否必填,lable,错误信息)
+			-实例化产生form对象(传字典,也可以不传)
+			-form对象.is_valid()  为true的时候,才是数据校验通过
+			-form对象.errors  当成一个字典(继承了字典),它是所有的错误信息{name:[列表,]}
+			-每个字段.errors 列表
+		-渲染模板(模板)
+			-第一种:{{ myform.name }}   myform.name拿到的是每个字段对象,只是用它来生成input框(这种用的很多)
+			-第二种:for循环,(用的也很多)
+			-第三种:myform.as_p()
+		-渲染错误信息:
+			-form对象的错误信息
+			-字段的错误信息
+		-局部钩子(能走到它,说明前面校验已经通过了,一定能把该字段值取出来)
+			def clean_字段名字(self):
+				指定字段取出来=self.cleanded_data.get(字段)
+				做判断,一旦失败:抛异常(ValidationError)
+				成功:返回这个字段的值
+				
+		-全局钩子(能走到它,前面的全都执行过了,包括局部钩子),在做密码判断的时候,一定要注意,可能密码取出来为空
+			def clean(self):
+				pwd取出来
+				re_pwd取出来
+				做判断一旦失败:抛异常(ValidationError)
+				成功:返回cleanded_data
+#==================================================================================================
+#==========================================实际例子========================================================
+#==================================================================================================
+url(r'^index/', views.index_form),
+
+app01下的model.py文件
+
+class User(models.Model):
+    name=models.CharField(max_length=32)
+    pwd=models.CharField(max_length=32)
+    email=models.EmailField()
+#==================================================================================================
+app01下的views.py文件
+
+from django.shortcuts import render, HttpResponse,redirect
+
+# forms组件数据校验的功能
+# 第一步:先要继承Form
+from django import forms
+from django.forms import widgets
+from django.core.exceptions import ValidationError
+
+
+# 写一个类
+class MyForm(forms.Form):
+    # 定义一个属性,可以用来校验字符串类型
+    # 限制最大长度是8,最小长度是3
+    name = forms.CharField(max_length=8, min_length=3, label='用户名',
+                           error_messages={'max_length': '最长是8', 'min_length': '最短是3', 'required': '这个必须填'},
+                           widget=widgets.TextInput(attrs={'class': 'form-control'}))
+    pwd = forms.CharField(max_length=8, min_length=3, required=True, label='密码',
+                          error_messages={'max_length': '最长是8', 'min_length': '最短是3', 'required': '这个必须填'},
+                          widget=widgets.PasswordInput())
+    re_pwd = forms.CharField(max_length=8, min_length=3, required=True, label='确认密码',
+                          error_messages={'max_length': '最长是8', 'min_length': '最短是3', 'required': '这个必须填'},
+                          widget=widgets.PasswordInput())
+    # 校验是否是邮箱格式
+    email = forms.EmailField(label='邮箱', error_messages={'required': '这个必须填', 'invalid': '不符合邮箱格式'})
+
+    # aa = forms.CharField(label='选择', error_messages={'required': '这个必须填', 'invalid': '不符合邮箱格式'},widget=widgets.CheckboxInput())
+    def clean_name(self):
+        # self:当前form对象
+        name = self.cleaned_data.get('name')
+        if name.startswith('sb'):
+            # 失败,抛异常
+            raise ValidationError('不能以傻逼开头')
+        # 正常,把name返回
+        return name
+
+    def clean(self):
+        pwd=self.cleaned_data.get('pwd')
+        re_pwd=self.cleaned_data.get('re_pwd')
+        if pwd==re_pwd:
+            return self.cleaned_data
+        else:
+            raise ValidationError('两次密码不一致')
+
+
+
+# Create your views here.
+# def index_form(request):
+#     # 生成对象时(实例化),需要传入要校验的数据(字典)
+#     dic={'name':'lq','pwd':'123','email':'33@qq.com'}
+#
+#     myform=MyForm(dic)
+#     # is_valid如果是true表示校验成功,反之,校验失败
+#     if myform.is_valid():
+#         # 校验通过的数据
+#         print(myform.cleaned_data)
+#         return HttpResponse('校验成功')
+#     else:
+#         print(myform.cleaned_data)
+#         # 错误信息,它是一个字典
+#         print(myform.errors)
+#         print(myform.errors.as_data())
+#         print(type(myform.errors))
+#         from django.forms.utils import ErrorDict
+#         return HttpResponse('校验失败')
+
+# 数据从前端传过来,校验
+# 要校验的字典,可以多参数,但是不能少
+# def index_form(request):
+#     # 生成对象时(实例化),需要传入要校验的数据(字典)
+#     if request.method=='GET':
+#         return render(request,'indxe.html')
+#     elif request.method=='POST':
+#         print(request.POST)
+#         myform=MyForm(request.POST)
+#         # is_valid如果是true表示校验成功,反之,校验失败
+#         if myform.is_valid():
+#             # 校验通过的数据
+#             print(myform.cleaned_data)
+#             return HttpResponse('校验成功')
+#         else:
+#             print(myform.cleaned_data)
+#             # 错误信息,它是一个字典
+#             print(myform.errors)
+#             print(myform.errors.as_data())
+#             print(type(myform.errors))
+#          from django.forms.utils import ErrorDict
+#             return HttpResponse('校验失败')
+
+
+# 渲染模板
+# def index_form(request):
+#     # 生成对象时(实例化),需要传入要校验的数据(字典)
+#     myform=MyForm()
+#     if request.method=='GET':
+#         return render(request,'indxe2.html',locals())
+
+
+# 渲染错误信息
+from app01 import models
+def index_form(request):
+    # 生成对象时(实例化),需要传入要校验的数据(字典)
+    if request.method == 'GET':
+        myform = MyForm()
+        # for line in myform:
+        #     print(line)
+        # 四个input框
+    elif request.method == 'POST':
+        myform = MyForm(request.POST)
+        if myform.is_valid():
+            print(myform.cleaned_data)
+
+            # models.User.objects.create(name='lqz',pwd='123',re_pwd='123)
+            myform.cleaned_data.pop('re_pwd')
+            # **打散字典
+            models.User.objects.create(**myform.cleaned_data)
+            return redirect('http://www.baidu.com')
+        else:
+            # errors是个字典，全局clear钩子校验，用__all__
+            all_error = myform.errors.get('__all__')
+            if all_error:
+                all_error=all_error[0]
+            # print(myform.errors.as_data)
+
+    return render(request, 'indxe3.html', locals())
+
+#==================================================================================================
+template中的indxe.html文件中
+
+<form action="" method="post">
+    <p>用户名: <input type="text" name="name"></p>
+{#    <p>密码: <input type="text" name="pwd"></p>#}
+    <p>确认密码: <input type="text" name="re_pwd"></p>
+    <p>邮箱: <input type="text" name="email"></p>
+    <input type="submit" value="提交">
+</form>
+#===============================================
+indxe2.html文件中
+<body>
+<hr>
+<h1>第一种方式</h1>
+<form action="" method="post" >
+    <p>用户名: {{ myform.name }}</p>
+    <p>密码: {{ myform.pwd }}</p>
+    <p>邮箱: {{ myform.email }}</p>
+    <input type="submit" value="提交">
+
+</form>
+<hr>
+<h1>第二种方式(for循环form对象,建议用这种)</h1>
+<form action="" method="post" >
+    {% for foo in myform %}
+        <p>{{ foo.label }}:{{ foo }}</p>
+    {% endfor %}
+
+    <input type="submit" value="提交">
+</form>
+<h1>第三种方式(不建议用)</h1>
+<form action="" method="post" >
+
+{#    {{ myform.as_p }}#}
+    {{ myform.as_ul }}
+    <input type="submit" value="提交">
+</form>
+</body>
+</html>
+#===============================================
+indxe3.html文件中
+
+    <link rel="stylesheet" href="/static/bootstrap-3.3.7-dist/css/bootstrap.min.css">
+    <title>Title</title>
+</head>
+<body>
+
+<h1>第二种方式(for循环form对象,建议用这种)</h1>
+<form action="" method="post" novalidate>
+    {% for foo in myform %}
+        <p>{{ foo.label }}:{{ foo }} <span>{{ foo.errors.0 }}</span></p>
+    {% endfor %}
+
+    <input type="submit" value="提交"><span>{{ all_error }}</span>
+</form>
+</body>
+</html>
+#==================================================================================================
