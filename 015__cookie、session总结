@@ -1,0 +1,130 @@
+# ==================================================================================			
+	今日内容:
+		-cookie
+			-是什么?存储在客户端浏览器上的键值对
+		-原理
+			是服务器产生,发给客户端浏览器,浏览器保存起来,下次发请求,会携带这个键值对到服务器
+		-Cookie的覆盖 
+			先写了一个键值对,后来再写,会把原来的值覆盖掉
+		-cookie使用(**********************)
+			-写cookie:在Httpresponse这个对象上写
+				-obj.set_cookie(key,value)
+			-取cookie:从request对象中取,取出来是个字典request.COOKIES
+			-删除cookie:
+				obj.delete_cookie('name')
+				
+			-登录认证装饰器,登录之后才能访问固定的页面
+				def login_auth(func):
+					def inner(request, *args, **kwargs):
+						# 拿到之前访问的路径
+						# 这个不行,因为取不到数据部分
+						# url=request.path
+						url = request.get_full_path()
+
+						is_login = request.COOKIES.get('is_login')
+						if is_login:
+							res = func(request, *args, **kwargs)
+							return res
+						else:
+							return redirect('/login/?next=%s' % url)
+
+					return inner
+		-cookie的其他属性
+			-加盐cooke
+			-超时时间max_age,传一个秒的时间
+			-超时时间expires,传一个datatime对象
+			-path='/',可以设置路径,设置路径之后,path='/index/',只有访问index的时候,才会携带cookie过来
+			-domain 设置域名下有效domain='map.baidu.com'
+			-secure=False, (默认是false,设置成True浏览器将通过HTTPS来回传cookie)
+			-httponly=True 只能https协议传输，无法被JavaScript获取（不是绝对，底层抓包可以获取到也可以被覆盖)
+		-session
+			-解决cookie不安全的问题,
+			-存在服务器上的键值对{'sdaf随机字符串':{name:lqz,pwd:123}}
+			-用session必须跟cookie连用
+		-session使用(****************)
+			-设置值
+				-request.session['name']='lqz'
+				-如果设置多个,它会以字典的形式存储到session表中的session_data中
+			-生成session时:
+				1 生成随机字符串:dfasfasdfa
+				2 取数据库存储
+				3 写入cookie(set_cookie('sessionid','dfasfasdfa'))
+			-取值
+				name=request.session['name']
+			-执行流程:
+				-取到cookie的随机字符串
+				-取session表中根据随机字符串查询,查询出session_data这个字典,然后把字典中name返回
+				
+			-删除值
+				-# 取出cookie,随机字符串,去数据库删除随机字符串是当前值的记录
+					request.session.delete()
+				-#既删除cookie,又删除数据库
+					request.session.flush()
+		-session其他属性
+			-request.session.setdefault('k1',123) # 存在则不设置
+			-取到随机字符串,浏览器带过来的cookie的值
+				print(request.session.session_key)
+				内部
+				request.COOKIES.get('sessionid')
+			-清空失效的session
+				request.session.clear_expired()
+			-校验sessionid是否存在
+				request.session.exists("session_key")
+			-
+		
+		session的配置
+			-不但能放到数据库,还能放到文件中,redis(内存数据库)
+作业:
+	1 基于session写一个登陆认证装饰器,登陆之后才能查看订单页面,购物页面
+	2 应用到cbv上
+	
+# ===================================================================================
+
+昨日回顾:
+	cookie:
+		-是什么?存储在客户端浏览器上的键值对
+		-干啥用的?记录状态
+		-django中使用:
+			-设置值:
+				-HttpResponse对象,obj.set_cookie(key,value,超时时间)
+				-JsonResponse也可以用
+			-取值
+				request.COOKIES  字典,然后把要取的值取出来,推荐用get
+			-删除值
+				-HttpResponse对象,obj.delete_cookie('key'),从客户浏览器中删除
+		-其他一些属性:
+			-加盐的cookie
+			-超时时间
+			-路径:如果是根路径,说明,以后所有的请求,都会携带cookie过来
+			-域:在某个域下有效
+	session:
+		-是什么?存在服务器上的键值对:key是一个随机字符串,value是个字典
+		-有什么作用:安全性,客户端浏览器不再存储敏感信息
+		-django中使用:
+			-设置值
+				-request.session['name']=lqz
+				-1 生成一个随机字符串
+				-2 存到数据库 随机字符串     {'name':lqz}
+				-3 向cookie中写入:sessionid  随机字符串
+				
+				-如果:再设置一次值
+					request.session['age']=18
+					只在随机字符串对应的字典内部添加,{'name':lqz,'age':18}
+			-取值
+				-request.session.get('name')
+				-先取出cooki中的随机字符串
+				-取数据库根据随机字符串查询,拿到data的值
+				-从字典中取出name对应的值
+				
+			-删除值
+				-request.session.delete()------>只是删除数据库的内容
+				-request.session.flush()------>删除数据库的内容,又删除浏览器的cookie
+				
+			-其他的属性:
+				-默认session存在数据库,可以存在缓存,文件
+				-超时时间
+				-路径:如果是根路径,说明,以后所有的请求,都会携带cookie过来
+				-域:在某个域下有效
+				-其他的
+# ===================================================================================
+# ===================================================================================
