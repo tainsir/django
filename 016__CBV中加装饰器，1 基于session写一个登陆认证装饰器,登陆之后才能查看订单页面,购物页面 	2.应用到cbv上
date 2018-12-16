@@ -1,4 +1,17 @@
 # =====================================================================================
+cbv加装饰器
+		-先导入:from django.utils.decorators import method_decorator
+		-1 可以在方法上加装饰器:
+			@method_decorator(login_auth)
+		-2 可以在类上加
+			@method_decorator(login_auth,name='post')
+			@method_decorator(login_auth,name='get')
+		-3 可以加在dishpatch方法上
+			@method_decorator(login_auth)
+			一旦加在dishpatch,说明,所有方法都加了装饰器
+
+# =====================================================================================
+# =====================================================================================
 1).创建User数据库,在model.py中
 
 from django.db import models
