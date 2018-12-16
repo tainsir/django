@@ -1,5 +1,33 @@
 CSRF_TOKEN跨站请求伪造
 # ===========================================================================================
+中间件:
+		-django请求生命周期:
+		-中间件:对全局请求的修改,和全局响应的修改
+		-process_request:从上往下执行
+		-process_response:从下往上
+		-process_view
+		-process_exception
+		-process_template_response
+	csrf:跨站请求伪造
+		-django处理了这种攻击:中间件
+		-往后台传json数据,可以放在头中
+	xss攻击:跨站脚本攻击
+	
+	局部,全局禁用csrf:
+		-全局禁用:注释掉中间件
+			-局部使用:
+				-fbv
+					from django.views.decorators.csrf import csrf_exempt,csrf_protect
+					@csrf_protect
+					视图函数
+				-cbv
+					-from django.utils.decorators import method_decorator
+					-只能 加在类上(name=dispatch),或者加在dispatch方法上
+
+
+# ===========================================================================================
+# ===========================================================================================
+
 
 csrf:跨站请求伪造	
 		比如:转账请求:transfer?to=lqz&count=1000
