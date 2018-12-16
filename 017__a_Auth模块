@@ -1,4 +1,94 @@
 Auth模块
+# ==================================================================================
+# ==================================================================================
+今日内容
+	-auth组件
+		-auth是什么?
+		-django内置的用户认证系统,可以快速的实现,登录,注销,修改密码....
+		-怎么用?
+			-(1)先创建超级用户:
+				-python3 manage.py createsuperuser
+				-输入用户名,邮箱(可以不输入),密码,敲回车,这样就创建出一个超级用户
+				-也就是在auth_user这个表中插入了一条数据(密码是加密的,所以我不能手动插入)
+			-(2)验证用户:
+				-from django.contrib import auth
+				-user = auth.authenticate(request, username=name, password=pwd)
+				-相当于在查询:user=models.User.objects.filter(name=name,pwd=pwd).first()
+				-如果校验通过,会返回一个user对象,通过判断user对象,校验是否验证成功
+			-(3)登录
+				-auth.login(request,user)
+				-其实就是在session中写了一条数据
+			-(4)一旦登录成功,调了这个函数login(request,user)
+				-以后再视图类,函数中的request对象中,就有一个user对象,就是当前登录的用户对象
+				-如果没有登录,request.user=AnonymousUser,匿名用户
+			-(5)注销
+				-auth.logout(request)
+				-内部:调用了request.session.flush(),删除了登录状态
+			-(6)登录认证装饰器
+				-from django.contrib.auth.decorators import login_required
+				-@login_required(redirect_field_name='eee',login_url='/login/')
+				-redirect_field_name:修改?后面的key值,
+				-login_url:如果没有登录,跳转到的页面
+					-可以局部配置
+					-可以全局配置(在setting中)
+						# 全局的配置,如果没有登录,跳到这个路由
+						LOGIN_URL='/login/'
+			-(7)创建用户:
+				-from django.contrib.auth.models import User				
+				- 创建超级用户和普通用户
+					# 不能用create
+					# user=User.objects.create(username=name,password=pwd)
+					# 创建超级用户
+					# user=User.objects.create_superuser(username=name,password=pwd)
+					# 创建普通用户
+					user=User.objects.create_user(username=name,password=pwd)
+			-(8)校验密码
+				-request.user.check_password(pwd)
+				-先拿到用户(可以是登录用户,可以现查)
+			-(9)修改密码:
+				-user.set_password(pwd)
+				-user.save()
+				-注意:一定要调用save(),否则是不保存的
+			-(10)is_authenticated()
+				-如果通过验证,是true反之false
+			-(11)其他方法(了解):
+				-is_active:禁止登录网站(用户还存在,封号)
+				-is_staff:是否对网站有管理权限(能不能登录admin)
+				
+			-(12)删除用户
+				-orm删除
+		如果想在认证组件上加手机号等其他字段:如何处理
+			-(1) 定义一个表模型,跟User一对一管理
+				class UserDetail(models.Model):
+					phone=models.CharField(max_length=32)
+					# 一对一跟auth_user表做关联
+					# 如果是从外部引入的表模型,是不能加引号的
+					# 如果加引号,只是在当前model找
+					user=models.OneToOneField(to=User)
+			-(2)定义一个表模型,继承(AbstractUser)
+				-from django.contrib.auth.models import AbstractUser
+				 class UserInfo(AbstractUser):
+					# username,password...都有
+					phone=models.CharField(max_length=32)
+					sex=models.BooleanField()
+				-在setting中配置:
+					AUTH_USER_MODEL ='app01.UserInfo'
+				-做数据库迁移,以后就没有auth_user这个表了,以后认证组件用的表就是UserInfo
+				-原来auth中的其他操作:
+					-authentication
+					-login
+					-logout
+					-set_password
+					....
+					---一样用,完全一样
+				-不一样的地方:
+					如果之前用到User这个表模型的地方,都换成UserInfo
+
+
+
+# ==================================================================================
+# ==================================================================================
+
 一、Auth模块是什么？
 Auth模块是Django自带的用户认证模块，可以快速的实现，登录，注销，修改密码
 # ==================================================================================
