@@ -1,4 +1,110 @@
 # ==========================================================================================
+# ==========================================================================================
+中间件
+		-中间件是什么?请求和响应之间的一道屏障
+		-中间件作用:控制请求和响应
+		-django中内置几个中间件
+		-自定义中间件
+			-from django.utils.deprecation import MiddlewareMixin   先导入
+			-定义一个类,随意命名,继承MiddlewareMixin
+			class MyMiddleware1(MiddlewareMixin):
+				def process_request(self, request):
+					print('MyMiddleware---->1---->process_request')
+					# 返回HttpRspons对象,直接返回,走自己的process_response
+					# 返回None的时候,继续往下走
+					# return HttpResponse('i am middle--1')
+					return None
+
+				def process_response(self, request, response):
+
+					print('MyMiddleware--->1---->process_response')
+					return response
+			-使用:在setting中注册,是有顺序的,
+				MIDDLEWARE = [
+				'app01.mymiddelware.MyMiddleware1',
+				]
+			
+		-中间件执行顺序:
+			-process_request,从上往下执行
+				-如果retrun HttpResponse的对象,直接返回了
+				-如果retrun None ,继续往下走
+			-process_response,从下往上执行
+				-必须要retrun Httpresponse的对象
+		-中间件的方法:()
+			-process_request
+				-请求来的时候,会响应它
+			-process_response
+				-响应回去的时候,会走它
+			-process_view(了解)
+				- request, callback(视图函数), callback_args(无名分组的参数), callback_kwargs(有名分组的参数)
+				-执行顺序,详见图
+			-def process_exception(self, request, exception)(了解)
+			-def process_template_response(self, request, response):(了解)
+	csrf:跨站请求伪造	
+		比如:转账请求:transfer?to=lqz&count=1000
+		-是什么?攻击者盗用了你的身份，以你的名义发送恶意请求，对服务器来说这个请求是完全合法的
+		-如何防范:
+			-通过refer
+			-加一个随机字符串校验(加载请求的路径里,加载请求体中)
+			-在请求头中加字符串校验
+		django中的应用:
+			-中间件不注释掉
+			-以后再发post请求,携带那个随机字符串
+				-form表单形式:
+					<form action="" method="post">
+						{% csrf_token %}
+						<input type="text" name="name">
+						<input type="text" name="pwd">
+						<input type="submit" value="提交">
+					</form>
+				-ajax提交
+				data: {
+					'name': $('[name="name"]').val(),
+					'pwd': $('[name="pwd"]').val(),
+					//'csrfmiddlewaretoken': $('[name="csrfmiddlewaretoken"]').val()
+					'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+		csrf:局部禁用,局部使用
+			-用装饰器:from django.views.decorators.csrf import csrf_exempt,csrf_protect
+			-fbv--->直接加载fbv上就行了
+				-局部禁用,全局得使用
+				 @csrf_exempt
+				 def csrf_disable(request):
+				         print(request.POST)
+				         return HttpResponse('ok')
+				-局部使用,全局得禁用
+				 @csrf_protect
+				 def csrf_disable(request):
+				         print(request.POST)
+				         return HttpResponse('ok')
+			-cbv-->只能加在dispatch方法或者类上面
+				-局部禁用,全局得使用
+				-局部使用,全局得禁用
+				from django.views import View
+				from django.utils.decorators import method_decorator
+				@method_decorator(csrf_protect,name='dispatch')
+				class Csrf_disable(View):
+					# @method_decorator(csrf_protect)
+					def dispatch(self, request, *args, **kwargs):
+						ret=super().dispatch(request, *args, **kwargs)
+						return ret
+					def get(self,request):
+						return HttpResponse('ok')
+
+					def post(self,request):
+						return HttpResponse('post---ok')
+						
+作业:
+	1 登录认证,写在中间件中(只有登录的请求不需要登录以后操作,其他请求,都必须登录以后操作)
+		
+	2 写一个频率控制的中间件(任意用户,一分钟只能访问3次)应用上csrf
+		-思路:
+			-当前访问的ip地址取出来
+			-存一个临时变量{ip:[时间1,时间2,时间3]}
+
+# ==========================================================================================
+# ==========================================================================================
+# ==========================================================================================
 1).在url.py中
 
 
@@ -35,8 +141,6 @@ MIDDLEWARE = [
 # from app01.mymiddelware import MyMiddleware1
 # from django.middleware.csrf import CsrfViewMiddleware
 # from  django.contrib.sessions.middleware import SessionMiddleware
-
-
 
 
 # ==========================================================================================
