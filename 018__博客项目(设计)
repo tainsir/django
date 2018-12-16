@@ -1,0 +1,42 @@
+博客项目:
+	1 需求分析
+		-首页(显示文章)
+		-文章详情
+		-点赞,点踩
+		-文章评论
+			-字评论
+			-评论的展示
+		-登录功能(图片验证码)
+		-注册功能(基于form验证,ajax)
+		-个人站点(不同人不同样式,文章过滤)
+		-后台管理:
+			-文章展示
+		-新增文章
+			-富文本编辑器
+		
+		
+		
+	2 设计程序(框架,数据库设计)
+		-UserInfo----用户表
+		-blog-----个人站点表
+		-Article----文章表
+		-commit----评论表
+		-upanddown----点赞点踩表
+		-category---文章分类表
+		-tag---文章标签表
+		-表关系
+			-userInfo跟blog ---- 一对一
+			-article跟blog-----一对多
+			-article跟category----(一篇文章只能由一个分类,一个分类下有多篇文章)一对多
+			-article跟tag----(一个标签可以对应多篇文章,一篇文章可以有多个标签)多对多
+			-commit跟Article----  一对多
+			-upanddown跟Article----  一对多
+			-user跟commit---一对多
+			-user跟upanddown---一对多
+			-category跟blog----一对多
+			-tag跟blog----一对多
+			
+	3 分任务开发(git)
+	4 测试
+	5 上线
+	
