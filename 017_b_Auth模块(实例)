@@ -1,0 +1,354 @@
+#================================================================================
+#================================================================================
+
+今日内容
+	-auth组件
+		-auth是什么?
+		-django内置的用户认证系统,可以快速的实现,登录,注销,修改密码....
+		-怎么用?
+			-(1)先创建超级用户:
+				-python3 manage.py createsuperuser
+				-输入用户名,邮箱(可以不输入),密码,敲回车,这样就创建出一个超级用户
+				-也就是在auth_user这个表中插入了一条数据(密码是加密的,所以我不能手动插入)
+			-(2)验证用户:
+				-from django.contrib import auth
+				-user = auth.authenticate(request, username=name, password=pwd)
+				-相当于在查询:user=models.User.objects.filter(name=name,pwd=pwd).first()
+				-如果校验通过,会返回一个user对象,通过判断user对象,校验是否验证成功
+			-(3)登录
+				-auth.login(request,user)
+				-其实就是在session中写了一条数据
+			-(4)一旦登录成功,调了这个函数login(request,user)
+				-以后再视图类,函数中的request对象中,就有一个user对象,就是当前登录的用户对象
+				-如果没有登录,request.user=AnonymousUser,匿名用户
+			-(5)注销
+				-auth.logout(request)
+				-内部:调用了request.session.flush(),删除了登录状态
+			-(6)登录认证装饰器
+				-from django.contrib.auth.decorators import login_required
+				-@login_required(redirect_field_name='eee',login_url='/login/')
+				-redirect_field_name:修改?后面的key值,
+				-login_url:如果没有登录,跳转到的页面
+					-可以局部配置
+					-可以全局配置(在setting中)
+						# 全局的配置,如果没有登录,跳到这个路由
+						LOGIN_URL='/login/'
+			-(7)创建用户:
+				-from django.contrib.auth.models import User				
+				- 创建超级用户和普通用户
+					# 不能用create
+					# user=User.objects.create(username=name,password=pwd)
+					# 创建超级用户
+					# user=User.objects.create_superuser(username=name,password=pwd)
+					# 创建普通用户
+					user=User.objects.create_user(username=name,password=pwd)
+			-(8)校验密码
+				-request.user.check_password(pwd)
+				-先拿到用户(可以是登录用户,可以现查)
+			-(9)修改密码:
+				-user.set_password(pwd)
+				-user.save()
+				-注意:一定要调用save(),否则是不保存的
+			-(10)is_authenticated()
+				-如果通过验证,是true反之false
+			-(11)其他方法(了解):
+				-is_active:禁止登录网站(用户还存在,封号)
+				-is_staff:是否对网站有管理权限(能不能登录admin)
+				
+			-(12)删除用户
+				-orm删除
+		如果想在认证组件上加手机号等其他字段:如何处理
+			-(1) 定义一个表模型,跟User一对一管理
+				class UserDetail(models.Model):
+					phone=models.CharField(max_length=32)
+					# 一对一跟auth_user表做关联
+					# 如果是从外部引入的表模型,是不能加引号的
+					# 如果加引号,只是在当前model找
+					user=models.OneToOneField(to=User)
+			-(2)定义一个表模型,继承(AbstractUser)
+				-from django.contrib.auth.models import AbstractUser
+				 class UserInfo(AbstractUser):
+					# username,password...都有
+					phone=models.CharField(max_length=32)
+					sex=models.BooleanField()
+				-在setting中配置:
+					AUTH_USER_MODEL ='app01.UserInfo'
+				-做数据库迁移,以后就没有auth_user这个表了,以后认证组件用的表就是UserInfo
+				-原来auth中的其他操作:
+					-authentication
+					-login
+					-logout
+					-set_password
+					....
+					---一样用,完全一样
+				-不一样的地方:
+					如果之前用到User这个表模型的地方,都换成UserInfo
+#================================================================================
+昨日回顾:
+	auth组件:
+		-验证:authenticat(request,username='lqz',password='123')
+		-登录:login(request,user)
+		-注销:logout(request),内部调用了flush(),以后再从request中取user,是匿名用户
+		-request.user:请求来了,在中间件中,通过cookie查询user信息,放到request.user中,如果查询不到,把匿名用户赋给它
+		-登录认证装饰器:login_required(指定?后面拼接的key值,如果没有登录,跳转到哪个url)
+			-全局配置跳转的url:在setting中:LOGIN_URL='/login/'
+		-创建用户:create_superuser,create_user,就只是一个字段区分
+		-校验密码:check_password(密码),得用户对象调用,如果校验通过,返回True
+		-修改密码:set_password(密码),修改了一定要调save()方法,得用户对象来调用
+		-是否验证通过:is_authenticated,校验用户是否验证通过,通常用在模板上
+		-删除用户:orm的删除
+		
+		-扩展auth组件:
+			-创建一个一对一的表模型
+			-定义一个表模型,继承AbstractUser,写扩展的字段
+			-数据库迁移会报错:去setting中配置:AUTH_UDER_MODEL='app名字.表模型'
+			-其他用法完全一样,只是原来用User表模型,全部改成新定义的表模型
+			
+	博客项目需求分析
+		-首页(显示文章)
+		-文章详情
+		-点赞,点踩
+		-文章评论
+			-字评论
+			-评论的展示
+		-登录功能(图片验证码)
+		-注册功能(基于form验证,ajax)
+		-个人站点(不同人不同样式,文章过滤)
+		-后台管理:
+			-文章展示
+		-新增文章
+			-富文本编辑器
+			
+	数据库设计:
+		User
+			-nid
+			-name
+			-password
+			-email
+			-phone
+			-avatar   用户头像
+			-create_date    用户注册时间
+			-blog
+		Blog
+			-nid
+			-title
+			-site_name
+			-theme
+		category:
+			-nid
+			-title
+			-blog   跟blog一对多
+			
+		tag:(文章关键字)
+			-nid
+			-title
+			-blog    跟blog一对多
+			
+		article
+			-nid
+			-title
+			-desc    摘要
+			-create_time    auto_add_now:当该条记录创建时,自动添加当前时间
+			-content   文章内容
+			
+			-category    一对多
+			-tag         多对多
+			-blog        一对多
+			
+		commit
+			-nid
+			-user     哪个用户
+			-article  对哪篇文章
+			-content   评论了什么内容
+			-commit_time  时间
+			
+			-parent_id
+			如何实现根评论与子评论?
+				-有同学分析,要再建一张表,跟commit是一对多的关系(不好)
+				
+				-如何用这一个表,表示出根评论和子评论?
+					-再加一个字段,标志,给那条评论,评论的
+			
+			
+			
+	nid	user    article   content    parent_id
+		
+	1	1        1         111         null
+	2   2        1         222         null
+	3   3	     1         333          1
+	4   4		 1         444          3
+	5   3        1         反弹         4
+		UpandDown
+			-nid
+			-user     哪个用户
+			-article  对哪篇文章
+			-is_up   点赞还是点踩
+			
+#================================================================================
+#================================================================================
+app01下的model.py中
+
+from django.contrib.auth.models import User,AbstractUser
+# 第一种方式
+# class UserDetail(models.Model):
+#     phone=models.CharField(max_length=32)
+#     # 一对一跟auth_user表做关联
+#     # 如果是从外部引入的表模型,是不能加引号的
+#     # 如果加引号,只是在当前model找
+#     user=models.OneToOneField(to=User)
+
+
+# 第二种方式,继承AbstractUser
+class UserInfo(AbstractUser):
+    # username,password...都有
+    phone=models.CharField(max_length=32)
+
+    sex=models.BooleanField()
+
+#================================================================================
+url.py文件中，
+
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    url(r'^login/', views.login),
+    url(r'^test/', views.test),
+    url(r'^logout/', views.logout),
+    url(r'^register/$', views.register),
+    url(r'^check_pwd/', views.check_pwd),
+    url(r'^change_pwd/', views.change_pwd),
+    url(r'^other_method/', views.other_method),
+    url(r'^register_my/', views.register_my),
+]
+
+#================================================================================
+setting.py中，
+
+STATIC_URL = '/static/'
+
+# 全局的配置,如果没有登录,跳到这个路由
+LOGIN_URL='/login/'
+
+# 配置,以后auth组件用的user表不再是原来的user表了,应该我指定的表
+# app下的某个表(这样就没有auth_user那个表了,以后在用,都是指定的这个表)
+AUTH_USER_MODEL ='app01.UserInfo'
+#================================================================================
+#================================================================================
+app01下的views.py中，
+
+from django.shortcuts import render, HttpResponse, redirect
+# Create your views here.
+from app01 import models
+from django.contrib import auth
+from django.contrib.auth.decorators import login_required
+
+def login(request):
+    if request.method == 'GET':
+
+        return render(request, 'login.html')
+    elif request.method == 'POST':
+        name = request.POST.get('name')
+        pwd = request.POST.get('pwd')
+        # 校验
+        user = auth.authenticate(request, username=name, password=pwd)
+        # 相当于
+        # user=models.User.objects.filter(name=name,pwd=pwd).first()
+        if user:
+            # 登录,其实就是把用户信息放到session
+            auth.login(request, user)
+            # 之前
+            # request.sessiono['name']=name
+            return HttpResponse('登录成功')
+        else:
+            return HttpResponse('用户名或密码错误')
+
+
+@login_required
+def test(request):
+    from django.core.handlers.wsgi import WSGIRequest
+    print(type(request))
+    user = request.user.password
+    print(user)
+    return render(request, 'test.html')
+
+
+def logout(request):
+    auth.logout(request)
+    return redirect('/login/')
+
+
+from django.contrib.auth.models import User
+
+
+def register(request):
+    name = 'egon'
+    pwd = '123'
+    # 不能用create
+    # user=User.objects.create(username=name,password=pwd)
+    # 创建超级用户
+    # user=User.objects.create_superuser(username=name,password=pwd)
+    # 创建普通用户
+    user = User.objects.create_user(username=name, password=pwd)
+    # ret=models.UserDetail.objects.create(phone='111',user=user)
+    print(user)
+    return redirect('/login/')
+
+
+def check_pwd(request):
+    pwd = '1233'
+    ret = request.user.check_password(pwd)
+    print(ret)
+    return HttpResponse('ok')
+
+
+def change_pwd(request):
+    pwd = '1233'
+    user = request.user
+    user.set_password(pwd)
+    user.save()
+
+    return HttpResponse('ok')
+
+def other_method(request):
+    # is_authenticated判断当前用户是否通过认证
+    # ret = request.user.is_authenticated()
+    # print(ret)
+    # request.user.is_active=False
+    request.user.is_active=0
+    request.user.save()
+
+
+
+    return render(request,'other_method.html')
+
+
+from app01 import models
+def register_my(request):
+    ret=models.UserInfo.objects.create_user(username='lqz',password='123',phone='12343',sex=True)
+    print(ret.username)
+    return HttpResponse('创建成功')
+#================================================================================
+#================================================================================
+
+login.html文件中
+<form action="" method="post">
+    {% csrf_token %}
+    <p>用户名:<input type="text" name="name"></p>
+    <p>密码:<input type="text" name="pwd"></p>
+    <p><input type="submit" value="提交"></p>
+</form>
+
+#===========================================
+other_method.html文件中，
+
+<body>
+{{ request.user.username }}
+</body>
+#===========================================
+test.html文件中
+<body>
+<a href="/logout/">点我注销</a>
+</body>
+#===========================================
+
+
+
