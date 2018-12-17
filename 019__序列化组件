@@ -1,0 +1,227 @@
+# ===========================================================================================
+# ===========================================================================================
+今日内容:
+	序列化组件:
+		-干啥用的?
+		-如何使用序列化组件
+		-Serializer
+			-1 重命名:用source:xx = serializers.CharField(source='name')
+			-2 取出出版社名字:
+				方式一:
+					-在模型表中重写__str__方法
+					-publish=serializers.CharField()
+				方式二:
+					-用source
+					-拿出出版社的城市
+					-publish=serializers.CharField(source='publish.city')
+		
+				*****如果不指定source,字段必须对应起来,如果指定了source,字段可以任意命名
+			-source 可以指定字段,也可也指定方法
+				publish.test这是个方法,会执行该方法,并拿到返回结果
+				test = serializers.CharField(source='publish.test')
+			-3 SerializerMethodField,可以指定一个方法
+				publish=serializers.SerializerMethodField()
+				# 方法名:叫get_字段名,要传参数,参数是:当前book对象
+				def get_publish(self,obj):
+					# obj 是当前book对象
+					dic={'name':obj.publish.name,'email':obj.publish.email}
+					return dic
+				-方法内部可以继续用其他的序列化类
+		-ModelSerializer
+			-必须在类中写
+			class Meta:
+				model=指定表
+				# fields = '__all__'
+				# 指定只取这两个字段
+				fields = ['nid','name']
+				# 去掉指定的字段
+				# exclude=['publish','authors']
+				# fields,跟exclude不能连用
+				# 指定深度,就是跨几个表(官方建议小于10,我给你的建议小于3)
+				# depth = 2
+			
+			
+作业:
+	-敲一遍上课讲的
+	-序列化组件可以序列化,也可也反序列化(研究一下)
+# ===================================================================
+昨日回顾:
+	序列化组件:	
+		1 对应着表,写序列化的类
+		2 from rest_framework import serializers 
+		3 写一个类,继承serializers.Serializer
+		4 类中写一些属性
+			-name = serializers.CharField()
+		5 使用:
+			-实例化产生一个对象(传参数)
+			-对象.data  ---->拿到字典
+		
+		6 其他:
+			-source:可以指定字段,也可以指定方法
+			-serializers.SerializerMethodField()
+				必须要写一个方法预制对应
+				get_字段名(self,obj对象)
+					#写一些逻辑
+					#也可以用序列化的类,继续序列化别的对象
+					return ''
+		7 ModelSerializer
+		
+		8 定义一个类
+			class BookSerializer(serializers.ModelSerializer):
+				# 必须写一个内部类,名字叫Meta
+				class Meta:
+					model = Book    指定要序列化的表
+					# fields = '__all__'
+					# 指定只取这两个字段
+					fields = ['nid','name']
+					# 去掉指定的字段
+					# exclude=['publish','authors']
+					# depth = 2
+		9 实例化传参数的时候,可以按关键字传:BookSerializer(instance='可以是queryset对象,也可是是单个对象',many=True/False)
+
+
+# ===========================================================================================
+# ===========================================================================================
+ap01下的model.py文件中
+
+from django.db import models
+
+# Create your models here.
+
+class Book(models.Model):
+    nid = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    price = models.DecimalField(max_digits=5, decimal_places=2)
+    publish_date = models.DateField()
+
+    publish = models.ForeignKey(to='Publish',to_field='nid',on_delete=models.CASCADE)
+    authors=models.ManyToManyField(to='Author')
+    def __str__(self):
+        return self.name
+
+
+class Author(models.Model):
+    nid = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    age = models.IntegerField()
+    author_detail = models.OneToOneField(to='AuthorDatail',to_field='nid',unique=True,on_delete=models.CASCADE)
+
+
+class AuthorDatail(models.Model):
+    nid = models.AutoField(primary_key=True)
+    telephone = models.BigIntegerField()
+    birthday = models.DateField()
+    addr = models.CharField(max_length=64)
+
+
+class Publish(models.Model):
+    nid = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    city = models.CharField(max_length=32)
+    email = models.EmailField()
+    def __str__(self):
+        return self.name
+    def test(self):
+        return self.email
+        
+# =========================================
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    url(r'^books/', views.Books.as_view()),
+]
+
+# ===========================================================================================
+在ap01下创建mySer.py文件，
+
+from rest_framework import serializers
+
+
+class AuthorSerializer(serializers.Serializer):
+    nid = serializers.CharField()
+    name = serializers.CharField()
+    age = serializers.CharField()
+
+
+# class BookSerializer(serializers.Serializer):
+#     # 可以用source修改别名
+#     xx = serializers.CharField(source='name')
+#     price = serializers.CharField()
+#     sb = serializers.CharField(source='publish.city')
+#     test = serializers.CharField(source='publish.test')
+#     publish_id = serializers.CharField()
+#     # SerializerMethodField,可以指定一个方法
+#     # publish=serializers.SerializerMethodField()
+#     # # 方法名:叫get_字段名,要传参数,参数是:当前book对象
+#     # def get_publish(self,obj):
+#     #     # obj 是当前book对象0
+#     #     dic={'name':obj.publish.name,'email':obj.publish.email}
+#     #     return dic
+#     authors=serializers.SerializerMethodField()
+#     # def get_authors(self,book):
+#     #     #拿到这本书的所有作者
+#     #     aus=book.authors.all()
+#     #     # 拼出一个列表,列表中套字典,每个字典是一个作者
+#     #     ll=[]
+#     #     for a in aus:
+#     #         ll.append({'name':a.name,'age':a.age})
+#     #     return ll
+#     def get_authors(self,book):
+#         #拿到这本书的所有作者
+#         aus=book.authors.all()
+#         # 可以继续用序列化类,来处理
+#         auth_ser=AuthorSerializer(aus,many=True)
+#         return auth_ser.data
+from ap01.models import Book
+
+
+# class BookSerializer(serializers.ModelSerializer):
+#     # 必须写一个内部类,名字叫Meta
+#     class Meta:
+#         model = Book
+#         fields = '__all__'
+#     # 重写属性
+#     publish = serializers.CharField(source='publish.name')
+#     authors = serializers.SerializerMethodField()
+#     def get_authors(self, book):
+#         # 拿到这本书的所有作者
+#         aus = book.authors.all()
+#         # 可以继续用序列化类,来处理
+#         auth_ser = AuthorSerializer(aus, many=True)
+#         return auth_ser.data
+
+
+class BookSerializer(serializers.ModelSerializer):
+    # 必须写一个内部类,名字叫Meta
+    class Meta:
+        model = Book
+        # fields = '__all__'
+        # 指定只取这两个字段
+        fields = ['nid','name']
+        # 去掉指定的字段
+        # exclude=['publish','authors']
+        # fields,跟exclude不能连用
+        # 指定深度(官方建议小于10,我给你的建议小于3)
+        # depth = 2
+
+
+# ===========================================================================================
+views.py文件中
+
+from django.shortcuts import render
+from ap01 import models
+# Create your views here.
+from rest_framework.views import  APIView
+from ap01.mySer import  BookSerializer
+from django.http import JsonResponse
+class Books(APIView):
+    def get(self,request,*args,**kwargs):
+
+        ret=models.Book.objects.all()
+        #生成一个序列化的对象,传参数
+        #序列化多条,记住many=True
+        book_ser=BookSerializer(ret,many=True)
+        print(book_ser.data)
+        return JsonResponse(book_ser.data,safe=False)
+ 
+# ===========================================================================================
+# ===========================================================================================
