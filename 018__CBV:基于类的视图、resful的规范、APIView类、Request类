@@ -1,0 +1,341 @@
+# =============================================================================================
+# =============================================================================================
+1 CBV的源码分析
+	-Class Base View(基于类的视图)
+	-Function Base View(基于函数的视图)
+	-def as_view 类方法
+	-def view:类方法内部,闭包函数定义:内层函数包含对外部作用域的引用
+	-python中一切皆对象:函数也是对象
+	-hasattr(self, 'get')--判断self类中是不是有该(get)方法  
+	-反射 setattr(self,get,get_all):相当于把get函数,变成了get_all 
+	-getattr(self, 'get'):拿到get函数的内存地址
+	- def view(request, *args, **kwargs):
+		self = cls(**initkwargs)
+		if hasattr(self, 'get') and not hasattr(self, 'head'):
+			self.head = self.get
+		self.request = request
+		self.args = args
+		self.kwargs = kwargs
+		#执行:dispatch:谁的dispatch方法?写的cbv的那个c,视图中的那个视图类
+		#我这个类如果没有写dispatch,会执行View中的dispatch方法
+		return self.dispatch(request, *args, **kwargs)
+	-def dispatch(self, request, *args, **kwargs):
+		#request.method 前台请求的方法,转成了小写
+		#http_method_names View中定义的一个列表:是一堆请求方式
+        if request.method.lower() in self.http_method_names:
+			#getattr的第三个参数是默认值:self.http_method_not_allowed
+			#拿到get方法的内存地址
+            handler = getattr(self, request.method.lower(), self.http_method_not_allowed)
+        else:
+            handler = self.http_method_not_allowed
+		#get(request,*args, **kwargs)
+        return handler(request, *args, **kwargs)
+		
+	总结:*******请求来了--->as_view---->view---->dispatch--->分发到不同的函数,执行函数,拿到结果,然后返回
+	
+1.1 阅读源码:
+	左侧工程栏--->设置图标-->点击--->show members(能看到py文件,类的方法)
+	
+2 resful规范(是什么)
+	-什么是resful(定义)
+		-是一个规范
+		-面向资源编程:把网络中所有东西,想象成资源
+	-规范:
+		-10条规范
+		-API与用户的通信协议，总是使用HTTPs协议:https比http安全
+		-域名 
+			https://api.example.com  尽量将API部署在专用域名（会存在跨域问题）
+			https://example.org/api/  API很简单
+			例如写一个查询所有图书的api接口:https://api.example.com/books
+											https://127.0.0.1/api/books
+		-版本:每个接口都应该有版本
+			URL，如：https://api.example.com/v1/    https://127.0.0.1/api/v2/books(推荐用这种)
+			请求头 跨域时，引发发送多次请求
+		-路径，视网络上任何东西都是资源，均使用名词表示（可复数）
+			https://api.example.com/v1/books
+			https://api.example.com/v1/animals
+			https://api.example.com/v1/employees
+			不能这么写:
+				-获取所有图书:https://127.0.0.1/api/get_all_books
+				-新增一本书:https://127.0.0.1/api/add_book
+			同一都用这个:
+			https://api.example.com/v1/books
+		-method
+			GET      ：从服务器取出资源（一项或多项）
+			POST    ：在服务器新建一个资源
+			PUT      ：在服务器更新资源（客户端提供改变后的完整资源）
+			PATCH  ：在服务器更新资源（客户端提供改变的属性）
+			DELETE ：从服务器删除资源
+		-过滤，通过在url上传参的形式传递搜索条件
+			https://api.example.com/v1/zoos?limit=10：指定返回记录的数量
+		-状态码
+			请求回去,需要有状态码
+			自定义状态码
+			status: 100表示成功
+					101表示用户名密码错误
+					102我也不知道什么错误
+		-错误处理，应返回错误信息，error当做key。
+			-{status:100,error:'错误信息写上'}
+		-返回结果，针对不同操作，服务器向用户返回的结果应该符合以下规范。
+			GET /books：返回资源对象的列表（数组）
+			GET /books/1：返回单个资源对象
+			POST /books：返回新生成的资源对象    -新增,传数据,一旦新增完成,把新的资源对象返回
+			PUT /books/1：返回完整的资源对象
+			PATCH /books/1：返回完整的资源对象
+			DELETE /books/1：返回一个空文档
+		-Hypermedia API，RESTful API最好做到Hypermedia，即返回结果中提供链接，连向其他API		      方法，使得用户不查文档，也知道下一步应该做什么。
+				{
+					status:100
+					msg:成功
+					url:127.0.0.1/books/1
+				}
+			核心:返回结果中提供链接
+			
+2.1 django写resful规范的接口
+2.2 postman软件:模拟发请求的软件
+2.3 格式化json格式数据
+	-https://www.json.cn/
+2.4 put请求,django不会帮我解析body内的数据,需要自己处理
+			
+3 drf(django rest framework)框架(django的app)
+	安装:djangorestframework
+	-它是一个app,要在咱的项目中用
+	-只是快速的构建resful规范的接口
+	-csrf_exempt:局部禁用csrf(csrf是可以局部使用,局部禁用)
+	-以后再执行的dispatch方法是APIView的dispatch方法
+	-getattr和setattr
+	-重点掌握这三点:
+		-request.data 是个方法,包装成了属性,前台传过来body体中数据的数据,放在里面
+		-request.query_params  这个是原来GET中的数据
+		-request把原来的request包装进去了
+4 APIView源码分析
+	
+5 序列化
+	-1 自己写for循环来处理(麻烦)
+	-2 django提供的序列化组件(不可控)
+		from django.core import serializers
+		ret=serializers.serialize('json','queryset对象')
+		ret就是序列化之后的字符串了,不需要再序列化了
+	-3 drf给咱提供的序列化组件
+		-1 先导入
+			from rest_framework.serializers import Serializer
+			from rest_framework import serializers
+		-2 写一个类,继承Serializer
+		-3 在类内部写属性:
+			name=serializers.CharField()
+		-4 使用:
+			-先生成对象,需要传参数 instance:要序列化的对象(可能是queryset,也可能是单个对象)    
+			many:如果是queryset---True,,如果是单个对象--False
+		-5 对象.data --->是一个字典
+
+作业:
+	1 什么是幂等性  (put请求是幂等的,post请求不是幂等的)
+		幂等性：就是用户对于同一操作发起的一次请求或者多次请求的结果是一致的，
+		不会因为多次点击而产生了副作用。举个最简单的例子，那就是支付，用户购买商品使用约支付，
+		支付扣款成功，但是返回结果的时候网络异常，此时钱已经扣了，用户再次点击按钮，
+		此时会进行第二次扣款，返回结果成功，用户查询余额返发现多扣钱了，流水记录也变成了两条。
+		
+	2 图书的其他resful的接口写完(用drf的序列化组件)
+	3 讲的整理出来
+		-resful的规范
+		-APIView的执行流程
+		-Request对象
+		-序列化组件(不用着急)
+	
+# =============================================================================================
+昨日回顾:
+	CBV:基于类的视图
+		-继承View  
+		-from django.views import View
+		-类中的方法只能是如下方法:
+		-http_method_names = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']
+		-请求流程:as_view() 的返回值是他内部view函数的内存地址
+		-dispatch方法,总的分发方法
+		-补充:
+			url(r'^test/', csrf_exempt(views.test)),
+			
+		-总结:
+			-路由配置好,项目启动:as_view()---->返回结果是一个函数的内存地址
+			-请求来了---->触发函数的执行,就会执行dispatch方法---->根据请求的不同,分发到不同的视图函数
+	不要犯困的时候改源码(不犯困也不要改)
+	resful的规范:********
+		-10 个
+		-1 推荐用https
+		-2 域名:
+		-3 版本:
+		-4 视网络上任何东西都是资源，均使用名词表示
+		-5 method通过请求的方式来表示是新增,获取,修改,删除资源
+		-6 过滤:(要查价格大于10的书)127.0.0.1/api/v1/books/?price_gt=10
+		-7 状态码:
+		-8 错误信息
+		-9 返回结果，针对不同操作，服务器向用户返回的结果应该符合以下规范。
+		-10 返回结果中提供链接
+	drf
+		安装上
+	APIView 类
+		-继承了View
+		-重写了as_view方法,在内部屏蔽了xsrf
+		-重写了dispatch方法---核心
+	
+	Request 类
+		-封装了原来的request
+		-request.data   --->前台传递过来的数据,放在里面
+		-request重写了__getattr__方法
+		-request.query_params   就是原来request.的GET
+# =============================================================================================
+# =============================================================================================
+实例
+app01下的model.py中
+class Book(models.Model):
+
+    name=models.CharField(max_length=32)
+    price=models.CharField(max_length=32)
+# =============================================================================================
+url.py中
+
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    # as_view一定要加括号,as_view()哪里来的?从View中继承过来的
+    # as_view用类来调用的,它是一个类方法
+    # 猜:as_view这个方法执行完成以后,应该是个函数的内存地址
+    # 如果是get请求,会响应到类内部,执行get方法post请求,一样
+    # as_view 类方法,自动把自己传过来
+    url(r'^login/', views.Test.as_view()),
+    url(r'^books/$', views.Books.as_view()),
+    url(r'^books/(?P<pk>\d+)', views.Books.as_view()),
+]
+# =============================================================================================
+views.py 文件中
+
+
+from django.shortcuts import render, HttpResponse
+from django.http import JsonResponse
+# Create your views here.
+
+
+# 写cbv
+# 1 先导入View(继承它)
+from django.views import View
+
+
+# 写一个类继承它
+class Test(View):
+
+    def dispatch(self, request, *args, **kwargs):
+        print(11)
+        # ret=super().dispatch(request, *args, **kwargs)
+        # return ret
+        return super().dispatch(request, *args, **kwargs)
+
+    # 如果发送一个get 请求,会响应到这个函数
+    # request必须传,后面的可传可不传(有可能有名,无名分组)
+    def get(self, request, *args, **kwargs):
+        # 写一堆逻辑
+        print('get')
+        return render(request, 'login.html')
+
+    def post(self, request):
+        name = request.POST.get('name')
+        pwd = request.POST.get('pwd')
+        if name == 'lqz' and pwd == '123':
+            return HttpResponse('登录成功')
+        else:
+            return render(request, 'login.html', {'error': '用户名或密码错误'})
+
+# 写resful规范的接口,用fbv和cbv都可以
+
+from app01 import models
+
+# class Books(View):
+#     # 获取所有图书
+#     def get(self, request):
+#         print(type(request))
+#         response = {'status': 100, 'data': None}
+#         books = models.Book.objects.all()
+#         # 先构造出所有书籍的字典的列表
+#         ll = [{'name': book.name, 'price': book.price} for book in books]
+#         # 返回数据是json格式数据
+#         response['data'] = ll
+#         return JsonResponse(response, safe=False)
+#
+#     def put(self, request, pk):
+#         # print(request.PUT)
+#         import json
+#         data=json.loads(str(request.body,encoding='utf-8'))
+#         name=data.get('name')
+#         price=data.get('price')
+#         ret = models.Book.objects.filter(pk=pk).update(name=name,price=price)
+#         print(ret)
+#         return JsonResponse({'status': 100, 'msg': '修改成功'})
+#
+#     def post(self, request, pk):
+#         print(pk)
+#         print(request.method)
+#         print(request.body)
+#         print(request.POST)
+#         print(request.GET)
+#         name = request.POST.get('name')
+#         price = request.POST.get('price')
+#         print(name)
+#         ret = models.Book.objects.filter(pk=pk).update(name=name,price=price)
+#         print(ret)
+#         return JsonResponse({'status': 100, 'msg': '修改成功'})
+
+
+# 使用resful的APIView类
+from rest_framework.views import APIView
+# from rest_framework.response import Response
+# from rest_framework.request import Request
+
+from django.views.decorators.csrf import csrf_exempt,csrf_protect
+
+
+class Books(APIView):
+    # 现在这个request对象,已经不是原来django中的request对象了,它是rest_framework.request下的Request
+    def put(self, request, pk):
+            # django.core.handlers.wsgi.WSGIRequest----原来的djagno中的request的类
+            # 现在的request已经成了:rest_framework.request.Request
+            # print(request.PUT)
+            # 以后再取数据,直接从request.data中取
+            print(request.data)
+            # 前端传过来的编码格式:json格式:{'name': '水都是', 'price': '15'}
+            #  前端传过来的编码格式:urlencoded格式:<QueryDict: {'name': ['红楼梦'], 'price': ['15']}>
+            # request.data是谁的对象?
+            # request.data不同编码格式过来,它可能是不同类的对象,但是用法是一样的
+
+
+            # 原来的request是:request._request
+            print(type(request._request))
+
+            print(request._request.GET)
+            # 也能取出来(method,GET,POST,BODY)
+            print(request.GET)
+
+            return JsonResponse({'status': 100, 'msg': '修改成功'})
+# =============================================================================================
+login.html文件中，
+
+<form action="" method="post">
+    <p>用户名: <input type="text" name="name"></p>
+    <p>密码: <input type="text" name="pwd"></p>
+    <p><input type="submit" value="提交"> <span>{{ error }}</span></p>
+</form>
+# =============================================================================================
+
+
+# =============================================================================================
+项目下的test.py文件。
+
+
+def test(age):
+    tt=age
+    print(age)
+
+# print(test)
+# test(13)
+# 一切皆对象
+test.age=13
+# 执行一堆代码
+
+print(test.age)
+
