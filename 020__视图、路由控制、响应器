@@ -1,0 +1,601 @@
+# ==============================================================================================
+上节内容:
+	频率:
+		-自己定义:
+			-定义一个大字典
+			-请求来了,取出ip,
+			-判断ip是否在大字典中,如果不在,先插入到字典中,然后返回true
+			-如果在字典中,根据ip取出列表(时间列表,有顺序,最新的时间在最前面)
+			-while循环,判断当前时间,距离最后一条时间,是否大于60s,如果大于60s,pop掉(循环完成,内部没有60s以外的时间)
+			-判断列表长度,如果长度小于3,说明还可以访问,把当前时间,插到列表中的第一个位置,然后返回true
+			-判断列表长度,如果长度大于等于3,返回false
+			
+		-内置频率访问的类
+			-写一个类继承
+				-scope='test'
+				-def get_cache_key(self, request, view):
+					#以什么做限制,就把什么返回
+					return self.get_ident(request)
+				
+			-跟setting中对应
+				    'DEFAULT_THROTTLE_RATES': {
+						'test': '10/m'
+					}
+		-局部使用:
+			throttle_classes = [MyThrottle,]
+			
+		-全局使用:
+			在setting中配置
+			'DEFAULT_THROTTLE_CLASSES': ['app01.MyAuth.MyThrottle', ],
+	认证:
+		-认证类return的时候,返回值应该是两个或者是None
+		-认证失败,抛异常
+		-局部使用
+		
+		-全局使用
+		
+	权限:
+		-写一个权限类,如果权限认证成功,返回true,失败,返回false
+		-局部使用
+		-全局使用
+	
+		
+	序列化:
+		-写一个类,继承Serializer
+		-写一些属性
+			-text=CharField()
+				-source属性,可以传字段名,可以传方法(source指定的字段名不能跟前面字段名重复)
+			-aa=SerializerMethodField()
+				-写一个方法:get_字段名(self,对象)
+				-在方法内,通过orm查询其他表的数据
+				-返回什么,SerializerMethodField对应的字段,就能拿到什么
+				
+		-使用:视图类
+			-生成一个序列化类的对象(instance,data,many)
+			-对象.data - 把对象,转成字典/列表
+			
+		-数据校验保存功能
+			
+	解析器:
+		-局部使用
+		-全局使用
+		
+今日内容:
+	视图
+		第一种:
+			-from rest_framework.mixins import ListModelMixin, CreateModelMixin
+			# class PublishView(GenericAPIView, ListModelMixin, CreateModelMixin):
+			#     queryset = Publish.objects.all()
+			#     serializer_class = PublishSerializers
+			#
+			#     def get(self, request):
+			#         return self.list(request)
+			#
+			#     def post(self, request):
+			#         # 添加一条数据
+			#         return self.create(request)
+		第二种:
+			ListCreateAPIView 继承了GenericAPIView, ListModelMixin, CreateModelMixin
+			# class PublishView(GenericAPIView, ListModelMixin, CreateModelMixin):
+			# class PublishView(ListCreateAPIView):
+			#     queryset = Publish.objects.all()
+			#     serializer_class = PublishSerializers
+		第三种:
+			路由:url(r'^publish/$', views.PublishView.as_view({'get': 'list', 'post': 'create'})),
+			    url(r'^publish/(?P<pk>\d+)', views.PublishView.as_view({'get': 'retrieve', 'put': 'update','delete':'destroy'})),
+			# from rest_framework.viewsets import ModelViewSet
+			# class PublishView(ModelViewSet):
+			#     queryset = Publish.objects.all()
+			#     serializer_class = PublishSerializers
+			
+		最终:ViewSetMixin   它有什么作用?用了它之后,视图类中不需要写get,post,put方法了,自己定义方法就可以了
+		让请求方法对应到自己定义的方法上,配置路由
+		
+	路由控制
+		三种:
+			-一种基本路由:url(r'^publish/$', views.PublishView.as_view()),
+			-半自动路径:views.PublishView.as_view({'get': 'list', 'post': 'create'}))
+				-必须继承:ViewSetMixin
+				-继承ViewSetMixin的先后顺序
+			-全自动路由:(基本不用)
+				-from rest_framework import routers
+				# 生成一个router对象
+				router=routers.DefaultRouter()
+				# 需要传两个参数,第一个参数就是匹配的路径,第二个参数,是视图类
+				router.register('publish',views.PublishView)
+				
+				
+				url('', include(router.urls)),
+				#自动生成四个路由(PublishView必须继承ModelViewSet)
+				
+				
+	响应器:(基本上不需要你配置)
+		局部配置
+		视图类中:
+			-renderer_classes=[JSONRenderer,BrowsableAPIRenderer]
+		全局配置
+		在setting中:
+			REST_FRAMEWORK = {
+				'DEFAULT_RENDERER_CLASSES':['rest_framework.renderers.JSONRenderer']
+			}
+			
+			
+作业:
+	-上午讲的,写完,整理完
+	-from django.conf import settings(不需要全部写)
+		-实现的是用户如果配置了,用用户的配置,
+		-用户如果没配置,用默认的
+		实现
+		setting对象:
+		setting.DEBUG
+    
+# ==============================================================================================
+settings.py文件中
+
+STATIC_URL = '/static/'
+
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES':['rest_framework.renderers.JSONRenderer']
+}
+# AUTH_USER_MODEL=''
+# ==============================================================================================
+url.py文件中，
+
+from django.conf.urls import url,include
+from django.contrib import admin
+from app01 import views
+from rest_framework import routers
+# 生成一个router对象
+router=routers.DefaultRouter()
+# 需要传两个参数,第一个参数就是匹配的路径,第二个参数,是视图类
+router.register('publish',views.PublishView)
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    # url(r'^publish/$', views.PublishView.as_view()),
+    # url(r'^publish/(?P<pk>\d+)', views.PublishDetailView.as_view()),
+    # url(r'^books/$', views.BookView.as_view()),
+
+    # url(r'^publish', views.PublishView.as_view({'get': 'list', 'post': 'create'})),
+    # url(r'^publish/(?P<pk>\d+)', views.PublishView.as_view({'get': 'retrieve', 'put': 'update','delete':'destroy'})),
+    url(r'^test1/$', views.TestAll.as_view({'get': 'test'})),
+    # url(r'^test2/$', views.TestAll.as_view({'get': 'test2'})),
+    # url(r'^test3/$', views.TestAll.as_view({'get': 'test3'})),
+
+    url('', include(router.urls)),
+
+]
+
+# ==============================================================================================
+# ==============================================================================================
+app01下的models.py文件
+
+from django.db import models
+
+# Create your models here.
+class Book(models.Model):
+    nid = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    price = models.DecimalField(max_digits=5, decimal_places=2)
+    publish_date = models.DateField()
+
+    publish = models.ForeignKey(to='Publish',to_field='nid',on_delete=models.CASCADE)
+    authors=models.ManyToManyField(to='Author')
+    def __str__(self):
+        return self.name
+
+
+class Author(models.Model):
+    nid = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    age = models.IntegerField()
+    author_detail = models.OneToOneField(to='AuthorDatail',to_field='nid',unique=True,on_delete=models.CASCADE)
+
+
+class AuthorDatail(models.Model):
+    nid = models.AutoField(primary_key=True)
+    telephone = models.BigIntegerField()
+    birthday = models.DateField()
+    addr = models.CharField(max_length=64)
+
+
+class Publish(models.Model):
+    nid = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    city = models.CharField(max_length=32)
+    email = models.EmailField()
+    def __str__(self):
+        return self.name
+    def test(self):
+        return self.email
+# ==============================================================================================
+# ==============================================================================================
+app01下的mySer.py，
+
+from rest_framework import serializers
+
+
+class AuthorSerializer(serializers.Serializer):
+    nid = serializers.CharField()
+    name = serializers.CharField()
+    age = serializers.CharField()
+
+
+# class BookSerializer(serializers.Serializer):
+#     # 可以用source修改别名
+#     xx = serializers.CharField(source='name')
+#     price = serializers.CharField()
+#     sb = serializers.CharField(source='publish.city')
+#     test = serializers.CharField(source='publish.test')
+#     publish_id = serializers.CharField()
+#     # SerializerMethodField,可以指定一个方法
+#     # publish=serializers.SerializerMethodField()
+#     # # 方法名:叫get_字段名,要传参数,参数是:当前book对象
+#     # def get_publish(self,obj):
+#     #     # obj 是当前book对象0
+#     #     dic={'name':obj.publish.name,'email':obj.publish.email}
+#     #     return dic
+#     authors=serializers.SerializerMethodField()
+#     # def get_authors(self,book):
+#     #     #拿到这本书的所有作者
+#     #     aus=book.authors.all()
+#     #     # 拼出一个列表,列表中套字典,每个字典是一个作者
+#     #     ll=[]
+#     #     for a in aus:
+#     #         ll.append({'name':a.name,'age':a.age})
+#     #     return ll
+#     def get_authors(self,book):
+#         #拿到这本书的所有作者
+#         aus=book.authors.all()
+#         # 可以继续用序列化类,来处理
+#         auth_ser=AuthorSerializer(aus,many=True)
+#         return auth_ser.data
+from app01.models import *
+
+
+# class BookSerializer(serializers.ModelSerializer):
+#     # 必须写一个内部类,名字叫Meta
+#     class Meta:
+#         model = Book
+#         fields = '__all__'
+#     # 重写属性
+#     publish = serializers.CharField(source='publish.name')
+#     authors = serializers.SerializerMethodField()
+#     def get_authors(self, book):
+#         # 拿到这本书的所有作者
+#         aus = book.authors.all()
+#         # 可以继续用序列化类,来处理
+#         auth_ser = AuthorSerializer(aus, many=True)
+#         return auth_ser.data
+
+class BookSerializer(serializers.ModelSerializer):
+    # 必须写一个内部类,名字叫Meta
+    class Meta:
+        model = Book
+        # fields = '__all__'
+        # 指定只取这两个字段
+        fields = ['nid','name']
+        # 去掉指定的字段
+        # exclude=['publish','authors']
+        # fields,跟exclude不能连用
+        # 指定深度(官方建议小于10,我给你的建议小于3)
+        # depth = 2
+
+
+class PublishSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = Publish
+        fields = '__all__'
+# ==============================================================================================
+# ==============================================================================================
+from rest_framework import serializers
+
+
+class AuthorSerializer(serializers.Serializer):
+    nid = serializers.CharField()
+    name = serializers.CharField()
+    age = serializers.CharField()
+
+
+# class BookSerializer(serializers.Serializer):
+#     # 可以用source修改别名
+#     xx = serializers.CharField(source='name')
+#     price = serializers.CharField()
+#     sb = serializers.CharField(source='publish.city')
+#     test = serializers.CharField(source='publish.test')
+#     publish_id = serializers.CharField()
+#     # SerializerMethodField,可以指定一个方法
+#     # publish=serializers.SerializerMethodField()
+#     # # 方法名:叫get_字段名,要传参数,参数是:当前book对象
+#     # def get_publish(self,obj):
+#     #     # obj 是当前book对象0
+#     #     dic={'name':obj.publish.name,'email':obj.publish.email}
+#     #     return dic
+#     authors=serializers.SerializerMethodField()
+#     # def get_authors(self,book):
+#     #     #拿到这本书的所有作者
+#     #     aus=book.authors.all()
+#     #     # 拼出一个列表,列表中套字典,每个字典是一个作者
+#     #     ll=[]
+#     #     for a in aus:
+#     #         ll.append({'name':a.name,'age':a.age})
+#     #     return ll
+#     def get_authors(self,book):
+#         #拿到这本书的所有作者
+#         aus=book.authors.all()
+#         # 可以继续用序列化类,来处理
+#         auth_ser=AuthorSerializer(aus,many=True)
+#         return auth_ser.data
+from app01.models import *
+
+
+# class BookSerializer(serializers.ModelSerializer):
+#     # 必须写一个内部类,名字叫Meta
+#     class Meta:
+#         model = Book
+#         fields = '__all__'
+#     # 重写属性
+#     publish = serializers.CharField(source='publish.name')
+#     authors = serializers.SerializerMethodField()
+#     def get_authors(self, book):
+#         # 拿到这本书的所有作者
+#         aus = book.authors.all()
+#         # 可以继续用序列化类,来处理
+#         auth_ser = AuthorSerializer(aus, many=True)
+#         return auth_ser.data
+
+class BookSerializer(serializers.ModelSerializer):
+    # 必须写一个内部类,名字叫Meta
+    class Meta:
+        model = Book
+        # fields = '__all__'
+        # 指定只取这两个字段
+        fields = ['nid','name']
+        # 去掉指定的字段
+        # exclude=['publish','authors']
+        # fields,跟exclude不能连用
+        # 指定深度(官方建议小于10,我给你的建议小于3)
+        # depth = 2
+
+
+class PublishSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = Publish
+        fields = '__all__'
+# ==============================================================================================
+# ==============================================================================================
+views.py文件下，
+
+from django.shortcuts import render,HttpResponse
+from rest_framework.views import APIView
+from app01.models import *
+from app01.mySer import *
+from django.http import JsonResponse
+
+# class PublishView(APIView):
+#
+#     def get(self, request):
+#         publish_list = Publish.objects.all()
+#         bs = PublishSerializers(publish_list, many=True)
+#
+#         return JsonResponse(bs.data,safe=False)
+#
+#     def post(self, request):
+#         # 添加一条数据
+#         print(request.data)
+#
+#         bs = PublishSerializers(data=request.data)
+#         if bs.is_valid():
+#             bs.save()  # 生成记录
+#             return JsonResponse(bs.data,safe=False)
+#         else:
+#
+#             return JsonResponse(bs.errors,safe=False)
+
+
+# class PublishDetailView(APIView):
+#     def get(self, request, pk):
+#         publish_obj = Publish.objects.filter(pk=pk).first()
+#         bs = PublishSerializers(publish_obj, many=False)
+#         return JsonResponse(bs.data,safe=False)
+#
+#     def put(self, request, pk):
+#         publish_obj = Publish.objects.filter(pk=pk).first()
+#
+#         bs = PublishSerializers(data=request.data, instance=publish_obj)
+#         if bs.is_valid():
+#             bs.save()  # update
+#             return JsonResponse(bs.data)
+#         else:
+#             return JsonResponse(bs.errors)
+#
+#     def delete(self, request, pk):
+#         Publish.objects.filter(pk=pk).delete()
+#
+#         return JsonResponse("")
+
+
+# 第一种方案
+
+# class List:
+#     def list(self,request):
+#         queryset = self.queryset
+#         bs = self.serializers(queryset, many=True)
+#         return JsonResponse(bs.data,safe=False)
+# class Create:
+#     def create(self,request):
+#         print(request.data)
+#
+#         bs = PublishSerializers(data=request.data)
+#         if bs.is_valid():
+#             bs.save()  # 生成记录
+#             return JsonResponse(bs.data,safe=False)
+#         else:
+#
+#             return JsonResponse(bs.errors,safe=False)
+# class PublishView(APIView,List,Create):
+#     queryset=Publish.objects.all()
+#     serializers=PublishSerializers
+#     def get(self, request):
+#         return self.list(request)
+#
+#     def post(self, request):
+#         # 添加一条数据
+#         return self.create(request)
+#
+# class BookView(APIView,List,Create):
+#     queryset=Book.objects.all()
+#     serializers=BookSerializer
+#     def get(self, request):
+#         return self.list(request)
+#
+#     def post(self, request):
+#         return self.create(request)
+
+
+# 第二种方案 drf提供的封装的类
+# from rest_framework.mixins import ListModelMixin, CreateModelMixin, RetrieveModelMixin, UpdateModelMixin, \
+#     DestroyModelMixin
+# from rest_framework.generics import GenericAPIView
+#
+#
+# class PublishView(GenericAPIView, ListModelMixin, CreateModelMixin):
+#     queryset = Publish.objects.all()
+#     serializer_class = PublishSerializers
+#
+#     def get(self, request):
+#         return self.list(request)
+#
+#     def post(self, request):
+#         # 添加一条数据
+#         return self.create(request)
+#
+#
+# class PublishDetailView(GenericAPIView, RetrieveModelMixin, UpdateModelMixin, DestroyModelMixin):
+#     queryset = Publish.objects.all()
+#     serializer_class = PublishSerializers
+#
+#     def get(self, request, pk):
+#         return self.retrieve(request, pk)
+#
+#     def put(self, request, pk):
+#         return self.update(request, pk)
+#
+#     def delete(self, request, pk):
+#         return self.destroy(request, pk)
+#
+# class BookView(GenericAPIView, ListModelMixin, CreateModelMixin):
+#     queryset = Book.objects.all()
+#     serializer_class = BookSerializer
+#
+#     def get(self, request):
+#         return self.list(request)
+#
+#     def post(self, request):
+#         # 添加一条数据
+#         return self.create(request)
+
+from rest_framework.generics import ListCreateAPIView, ListAPIView, RetrieveUpdateDestroyAPIView
+
+
+# 第三种方法:
+# class PublishView(GenericAPIView, ListModelMixin, CreateModelMixin):
+# class PublishView(ListCreateAPIView):
+#     queryset = Publish.objects.all()
+#     serializer_class = PublishSerializers
+#
+#
+# class PublishDetailView(RetrieveUpdateDestroyAPIView):
+#     queryset = Publish.objects.all()
+#     serializer_class = PublishSerializers
+# # 第四种方法:(不建议用)
+from rest_framework.views import  APIView
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.renderers import JSONRenderer,BrowsableAPIRenderer
+class PublishView(ModelViewSet):
+    # renderer_classes=[JSONRenderer,BrowsableAPIRenderer]
+    queryset = Publish.objects.all()
+    serializer_class = PublishSerializers
+
+
+# from day100 import settings
+# settings 就是项目的配置文件
+from django.conf import settings
+class BookView(ModelViewSet):
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+from rest_framework.response import Response
+# 建议用魔法类ViewSetMixin
+from django.conf import settings
+from rest_framework.viewsets import  ViewSetMixin
+# 注意先后顺序,ViewSetMixin写在前面
+class TestAll(ViewSetMixin,APIView):
+    def test(self,request):
+        print(settings.DEBUG)
+
+        return HttpResponse('test')
+
+    def test2(self, request):
+        return HttpResponse('test2')
+
+    def test3(self, request):
+        return HttpResponse('test3')
+# ==============================================================================================
+# ==============================================================================================
+# ==============================================================================================
+
+项目下的测试test.py文件
+
+# class Fly:
+#     def fly(self):
+#         print(self.name,'fly')
+#
+#
+# class Eat:
+#     def eat(self):
+#         print(self.name,'eat')
+#
+#
+# class Speck:
+#     def speck(self):
+#         print(self.name,'Speck')
+#
+#
+# class Swim:
+#     def swim(self):
+#         print(self.name,'Swim')
+#
+#
+# class Run:
+#     def run(self):
+#         print(self.name,'Run')
+#
+#
+# class Bird(Fly, Eat):
+#     name='鸟'
+#     def test(self):
+#         self.fly()
+#
+#
+# class Fish(Swim, Eat):
+#     name='鱼'
+#     def test(self):
+#         self.swim()
+#         self.eat()
+#
+# fish=Fish()
+# fish.test()
+
+
+# def test(action=None,**kwargs):
+#     print(action)
+#     print(kwargs)
+#
+#
+# test({'name':'lqz','age':18})
+# test(**{'name':'lqz','age':18})
+# test(name='lqz',age=18)
+
+# ==============================================================================================
+# ==============================================================================================
+
+				
