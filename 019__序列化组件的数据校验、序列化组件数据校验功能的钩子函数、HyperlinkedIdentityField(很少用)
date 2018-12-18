@@ -1,0 +1,292 @@
+# ===========================================================================================
+今日内容:
+			
+	-HyperlinkedIdentityField(用的很少)
+		-1 publish = serializers.HyperlinkedIdentityField(view_name='ttt',lookup_field='publish_id',lookup_url_kwarg='pky')
+		-2 view_name:路由的别名,lookup_field:根据表的哪个字段,来拼路径,lookup_url_kwarg:反向解析有名分组的名字
+		-3 写路由:url(r'^publish/(?P<pky>\d+)', views.Publish.as_view(),name='ttt'),
+		-4 实例化序列化类的时候,需要把request对象传过去
+			book_ser=BookSerializer(ret,many=True,context={'request': request})
+			
+	-序列化组件的数据校验
+		-类比forms组件
+		-字段是否必填,通过required,来控制 authors=serializers.CharField(required=False)
+		-数据校验,生成一个序列化类的对象
+			-对象.is_valid()
+		-新增数据:
+			-对象.save()
+		-修改数据:
+			-在生成对象的时候,需要传instanse=查询出来的对象
+			-对象.save()
+	-序列化组件数据校验功能的钩子函数
+		-局部
+		-全局
+		
+内容回顾:
+	-HyperlinkedIdentityField
+		-传三个参数:第一个路由名字,用来反向解析,第二个参数是要反向解析的参数值,第三个参数:有名分组的名字
+		-xx=HyperlinkedIdentityField(view_name='路由名字',look_up_field='publish_id',lookup_url_kwarg='pky')
+		-xx=http://127.0.0.1:8001/publish/1
+	-数据校验
+		-生成序列化类对象的时候,把要校验的数据(字典:前端传过来的)传过来
+			-ser=BookSerializer(data=request.data)
+			-ser.is_valid() 
+			-显示中文:error_messages={'required': '该字段必填'}
+			-局部钩子函数(value就是这个字段的值)
+				-def validate_字段名(self, value):
+					#拿到值,就可以进行判断了
+					#如果通过,把value值返回,
+					#如果不通过,抛 ValidationError 异常
+			-全局钩子函数(value是验证通过的所有数据)
+				-def validate(self, value):
+					#取出数据,进行判断
+					#如果通过,把value值返回,
+					#如果不通过,抛 ValidationError 异常
+	-保存和更新:(必须继承ModelSerializer)
+		-保存
+			-ser=BookSerializer(data=request.data)
+			-ser.save()---->向数据库中插一条数据
+		-更新
+			-ser=BookSerializer(data=request.data.instance='要更新的对象')
+			-ser.save()---->向数据库中插一条数据
+		
+	-认证组件
+		-
+		
+		
+作业:
+	-上午将的敲一遍,尽量去看一下源码(都理解,都掌握)
+	-认证:必须用户登录之后才能访问所有图书,才能修改图片,才能查询单个图书
+					
+# ===========================================================================================
+例子：
+# ===========================================================================================
+model.py文件中
+
+class Book(models.Model):
+    nid = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    price = models.DecimalField(max_digits=5, decimal_places=2)
+    publish_date = models.DateField()
+
+    publish = models.ForeignKey(to='Publish', to_field='nid', on_delete=models.CASCADE)
+    authors = models.ManyToManyField(to='Author')
+
+    def __str__(self):
+        return self.name
+
+
+class Author(models.Model):
+    nid = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    age = models.IntegerField()
+    author_detail = models.OneToOneField(to='AuthorDatail', to_field='nid', unique=True, on_delete=models.CASCADE)
+
+
+class AuthorDatail(models.Model):
+    nid = models.AutoField(primary_key=True)
+    telephone = models.BigIntegerField()
+    birthday = models.DateField()
+    addr = models.CharField(max_length=64)
+
+
+class Publish(models.Model):
+    nid = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    city = models.CharField(max_length=32)
+    email = models.EmailField()
+
+    def __str__(self):
+        return self.name
+
+    def test(self):
+        return self.email
+
+
+class UserInfo(models.Model):
+    name = models.CharField(max_length=32)
+    pwd = models.CharField(max_length=32)
+
+
+class UserToken(models.Model):
+    token = models.CharField(max_length=64)
+    user = models.OneToOneField(to=UserInfo)
+
+# ===========================================================================================
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    url(r'^books/$', views.Books.as_view()),
+    url(r'^books/(?P<pk>\d+)', views.BooksDetail.as_view()),
+    url(r'^publish/(?P<pky>\d+)', views.Publish.as_view(),name='ttt'),
+    url(r'^login/', views.Login.as_view()),
+]
+# ===========================================================================================
+app01下的mySer.py中，
+
+from rest_framework import serializers
+
+from app01 import models
+
+
+class AuthorSerializer(serializers.Serializer):
+    nid = serializers.CharField()
+    name = serializers.CharField()
+    age = serializers.CharField()
+
+
+# class BookSerializer(serializers.Serializer):
+#     name = serializers.CharField()
+#     # publish = serializers.CharField()
+#     publish = serializers.HyperlinkedIdentityField(view_name='ttt',lookup_field='publish_id',lookup_url_kwarg='pky')
+from rest_framework.exceptions import ValidationError
+
+
+class BookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Book
+        fields = '__all__'
+
+    name = serializers.CharField(min_length=2, error_messages={'required': '该字段必填'})
+    authors = serializers.CharField(required=False)
+
+    # 局部钩子:
+    def validate_name(self, value):
+        # print(value)
+        if value.startswith('sb'):
+            # 不能以sb开头
+            raise ValidationError('不能以sb开头')
+        else:
+            return value
+
+    # 全局钩子找到了
+    def validate(self, value):
+        # value是所有校验通过数据的字典
+        print(value)
+        name = value.get('name')
+        price = value.get('price')
+        if name and price:
+            if str(name) == str(price):
+                return value
+            else:
+                raise ValidationError('名字跟价格不相等')
+        return value
+
+# ===========================================================================================
+视图函数views.py中,
+
+from django.shortcuts import render, HttpResponse
+from app01.mySer import BookSerializer
+from django.http import JsonResponse
+from app01 import models
+# Create your views here.
+from rest_framework.views import APIView
+
+
+class Books(APIView):
+    def get(self, request, *args, **kwargs):
+        ret = models.Book.objects.all()
+        # 生成一个序列化的对象,传参数
+        # 序列化多条,记住many=True
+        book_ser = BookSerializer(ret, many=True, context={'request': request})
+        print(book_ser.data)
+        return JsonResponse(book_ser.data, safe=False)
+
+    def post(self, request, *args, **kwargs):
+        # 前端传递过来的数据从data中取
+        # 用序列化类的数据校验
+        # data参数,是要校验的数据
+        response = {'status': 100, 'msg': '成功'}
+        ser = BookSerializer(data=request.data)
+        if ser.is_valid():
+            # 如果数据校验通过,is_valid是True
+            # 保存到数据库,ser是谁的对象?继承了ModelSerializer的类的对象
+            ser.save()
+        else:
+            response['status'] = 101
+            response['msg'] = ser.errors
+        return JsonResponse(response, safe=False)
+
+from rest_framework import exceptions
+class Auth():
+    def authenticate(self, request):
+        # 包装后的request对象,请求来的所有东西都能拿出来
+        # 如果认证通过,需要返回东西,如果认证不通过,要抛异常
+        token=request.GET.get('token')
+        ret=models.UserToken.objects.filter(token=token).first()
+        #如果有值,说明登录过了,而且带的随机字符串也是正确的
+        if ret:
+            return None
+        else:
+            # 如果没有值,抛异常
+            raise exceptions.APIException('您没有登录')
+
+
+from rest_framework.request import Request
+
+
+class BooksDetail(APIView):
+    authentication_classes = [Auth, ]
+
+    def get(self, request, pk):
+        response = {'status': 100, 'msg': '成功'}
+        ret = models.Book.objects.all().filter(pk=pk).first()
+        # 生成一个序列化的对象,传参数
+        # 序列化单,记住many=False
+        if ret:
+            book_ser = BookSerializer(ret, many=False)
+            print(book_ser.data)
+            response['data'] = book_ser.data
+        else:
+            response['status'] = 101
+            response['msg'] = '您查询的不存在'
+
+        return JsonResponse(response, safe=False)
+
+    def put(self, request, pk):
+        response = {'status': 100, 'msg': '成功'}
+        ret = models.Book.objects.all().filter(pk=pk).first()
+        if ret:
+            # 数据校验
+            # 传instance和不传instance,传instance的区别
+            # 不传instance,调save(),往数据库新增数据
+            # 传instance,调save(),修改数据
+            ser = BookSerializer(data=request.data, instance=ret)
+            if ser.is_valid():
+                # ret.name=request.data.get('name')
+                ser.save()
+            else:
+                response['status'] = 101
+                response['msg'] = ser.errors
+        else:
+            response['status'] = 102
+            response['msg'] = '修改的对象不存在'
+        return JsonResponse(response, safe=False)
+
+
+class Publish(APIView):
+    def get(self, request, *args, **kwargs):
+        return HttpResponse('ok')
+
+import uuid
+class Login(APIView):
+    def post(self, request):
+        response={'status':100,'msg':'登录成功'}
+        name = request.data.get('name')
+        pwd = request.data.get('pwd')
+        user = models.UserInfo.objects.filter(name=name, pwd=pwd).first()
+        if not user:
+            response['status']=101
+            response['msg']='用户名或密码错误'
+        else:
+            # 生成一个随机字符串
+            token=uuid.uuid4()
+            # 去数据库保存
+            models.UserToken.objects.create(token=token,user=user)
+            response['token']=token
+        return JsonResponse(response,safe=False)
+
+# ===========================================================================================
+# ===========================================================================================
+# ===========================================================================================
+
+
