@@ -1,0 +1,236 @@
+# =============================================================================================
+昨日回顾:
+	认证:
+		-写一个认证类,(可以继承BaseAuthentication)
+		-注意:这个类要放在单独的py文件中,(如果放在view中,全局配置无法使用)
+		-类中写个函数:def authenticate(self,request)
+		-认证的判断:
+			-取出token做验证
+			-验证通过,可以返回两个值,一个给了request.user,一个给了request.auth
+			-验证不通过,抛异常
+		-因为认证类可以写多个,如果想让多个都执行,放在前面的不能return值
+		-局部使用:
+			-在视图类中
+			authentication_classes = [LoginAuth, ]
+		-全局使用:
+			-在setting中配置
+			-REST_FRAMEWORK={
+				'DEFAULT_AUTHENTICATION_CLASSES':['app01.MyAuth.LoginAuth',],
+			}
+			-局部禁用:
+			-在视图类中
+			authentication_classes = [ ]
+	权限:
+		-写一个权限类,(可以继承BasePermission)
+		-注意:这个类要放在单独的py文件中,(如果放在view中,全局配置无法使用)
+		-类中的方法:def has_permission(self,request,view)
+			-认证通过:返回True
+			-认证不通过:返回False
+			-返回值:布尔类型
+		-局部使用:
+		-在视图类中:
+		-permission_classes = [UserPermission,]
+		-全局使用:
+			-在setting中配置
+			-REST_FRAMEWORK={
+				'DEFAULT_PERMISSION_CLASSES':['app01.MyAuth.UserPermission',]
+			}
+			-局部禁用:
+				-在视图类中:
+				-permission_classes = []
+		
+	choice的用法:
+		-拿出数字对应的中文:get_字段名_dispaly()
+		
+		
+	
+		
+		
+今日内容:
+	频率组件:
+		-频率是什么?节流,访问控制
+		
+		-内置的访问频率控制类SimpleRateThrottle
+		-写一个类,继承SimpleRateThrottle
+		-class MyThrottle(SimpleRateThrottle):
+			scope='aaa'
+			def get_cache_key(self, request, view):
+				return self.get_ident(request)
+		-在setting中:
+			REST_FRAMEWORK = {
+				'DEFAULT_THROTTLE_RATES':{
+					'aaa':'10/m'
+				}
+			}
+		
+		-使用
+			局部使用:
+				-在视图类中写
+				throttle_classes = [MyThrottle,]
+			全局使用:
+				-在setting中写
+				 'DEFAULT_THROTTLE_CLASSES':['app01.MyAuth.MyThrottle',],
+		
+				-局部禁用:
+					-在视图类中写
+					throttle_classes = []
+					
+					
+	
+		错误信息改成中文显示:
+		    def throttled(self, request, wait):
+				class MyThrottled(exceptions.Throttled):
+					default_detail = '傻逼'
+					extra_detail_singular = '还剩 {wait} 秒.'
+					extra_detail_plural = '还剩 {wait} 秒'
+
+				raise MyThrottled(wait)
+				
+				
+	解析器:
+		作用:传过来的数据,解析成字典
+		使用:
+		局部使用:
+			from rest_framework.parsers import JSONParser,FormParser,MultiPartParser
+			在视图类中:
+			parser_classes = [FormParser,]
+		全局使用
+			REST_FRAMEWORK = {
+				'DEFAULT_PARSER_CLASSES':[
+					'rest_framework.parsers.JSONParser'
+				]
+
+			}
+
+			局部使用指定的解析器:
+			在视图类中:
+			parser_classes = [FormParser,]
+		
+		
+				
+作业:
+	1 上课讲的敲一遍
+	2 讲的源码,走一遍
+	3 上课讲的一分种访问6次
+		-自己写
+	4 用内置的
+	5 封装视图,实现冗余代码封装起来
+
+# =============================================================================================
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    url(r'^test/', views.Test.as_view()),
+]
+# =============================================================================================
+settings.py文件中
+
+STATIC_URL = '/static/'
+
+REST_FRAMEWORK = {
+    'DEFAULT_THROTTLE_CLASSES': ['app01.MyAuth.MyThrottle', ],
+    'DEFAULT_THROTTLE_RATES': {
+        'aaa': '10/m'
+    }
+}
+# =============================================================================================
+# =============================================================================================
+app01下的MyAuth.py文件中
+
+
+from rest_framework.throttling import BaseThrottle,SimpleRateThrottle
+import time
+
+
+# class MyThrottle():
+#     visitor_dic = {}
+#
+#     def __init__(self):
+#         self.history = None
+#
+#     def allow_request(self, request, view):
+#         '''
+#             {'ip1':[时间1 ,时间2],
+#             'ip2':[时间1, ],
+#             }
+#            #（1）取出访问者ip
+#             # （2）判断当前ip不在访问字典里，添加进去，并且直接返回True,表示第一次访问，在字典里，继续往下走
+#             # （3）循环判断当前ip的列表，有值，并且当前时间减去列表的最后一个时间大于60s，把这种数据pop掉，这样列表中只有60s以内的访问时间，
+#             # （4）判断，当列表小于3，说明一分钟以内访问不足三次，把当前时间插入到列表第一个位置，返回True，顺利通过
+#             # （5）当大于等于3，说明一分钟内访问超过三次，返回False验证失败
+#         '''
+#
+#         # Meta:请求所有的东西的字典
+#         # 拿出ip地址
+#         ip = request.META.get('REMOTE_ADDR')
+#         # 不在字典中,说明是第一次访问
+#         ctime = time.time()
+#         if ip not in self.visitor_dic:
+#             self.visitor_dic[ip] = [ctime, ]
+#             return True
+#         # 根据当前访问者ip,取出访问的时间列表
+#         history = self.visitor_dic[ip]
+#         self.history = history
+#         while history and ctime - history[-1] > 60:
+#             history.pop()
+#
+#         if len(history) < 3:
+#             # 把当前时间放到第0个位置上
+#             history.insert(0, ctime)
+#             return True
+#
+#         return False
+#
+#     def wait(self):
+#         # 剩余时间
+#         ctime = time.time()
+#         return 60 - (ctime - self.history[-1])
+
+
+class MyThrottle(SimpleRateThrottle):
+    scope='aaa'
+    def get_cache_key(self, request, view):
+        # 返回ip地址
+        # ip=request.META.get('REMOTE_ADDR')
+        # return ip
+        return self.get_ident(request)
+# =============================================================================================
+# =============================================================================================
+app01下的views.py文件中
+
+from django.shortcuts import render, HttpResponse
+
+# Create your views here.
+from rest_framework.views import APIView
+from rest_framework import exceptions
+from app01.MyAuth import MyThrottle
+from rest_framework.request import Request
+
+from django.core.handlers.wsgi import WSGIRequest
+from rest_framework.parsers import JSONParser,FormParser
+class Test(APIView):
+    # throttle_classes = [MyThrottle,]
+    # parser_classes = [FormParser,]
+    def get(self, request):
+        print(type(request._request))
+        return HttpResponse('ok')
+
+    def post(self,request):
+        print(request.data)
+        return HttpResponse('post')
+
+    def throttled(self, request, wait):
+        class MyThrottled(exceptions.Throttled):
+            default_detail = '傻逼'
+            extra_detail_singular = '还剩 {wait} 秒.'
+            extra_detail_plural = '还剩 {wait} 秒'
+
+        raise MyThrottled(wait)
+
+# class Test(APIView):
+#     def get_authenticators(self):
+#         print(type(request._request))
+
+# =============================================================================================
+# =============================================================================================
+
+		
