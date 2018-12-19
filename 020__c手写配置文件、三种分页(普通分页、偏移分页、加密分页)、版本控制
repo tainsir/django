@@ -350,15 +350,3 @@ class Book(ViewSetMixin, APIView):
         return page.get_paginated_response(ser.data)
 
 # ==============================================================================================
-
-	
-				
-				
-				
-				
-		
-	
-	
-	
-	
-			
