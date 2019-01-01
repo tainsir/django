@@ -1,0 +1,340 @@
+# =====================================================================================
+models.py中创建数据库中的表
+
+from django.db import models
+
+# Create your models here.
+# 用户信息
+class UserInfo(models.Model):
+    name = models.CharField(max_length=32)
+    # 写choice
+    user_choice=((0,'普通用户'),(1,'会员'),(2,'超级用户'))
+    # 指定choice,可以快速的通过数字,取出文字
+    user_type=models.IntegerField(choices=user_choice,default=0)
+    pwd = models.CharField(max_length=32)
+
+# 用户token
+class UserToken(models.Model):
+    token = models.CharField(max_length=64)
+    user = models.OneToOneField(to=UserInfo)
+class Book(models.Model):
+    nid = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    price = models.DecimalField(max_digits=5, decimal_places=2)
+    publish_date = models.DateField()
+
+    publish = models.ForeignKey(to='Publish', to_field='nid', on_delete=models.CASCADE)
+    authors = models.ManyToManyField(to='Author')
+
+    def __str__(self):
+        return self.name
+
+
+class Author(models.Model):
+    nid = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    age = models.IntegerField()
+    author_detail = models.OneToOneField(to='AuthorDatail', to_field='nid', unique=True, on_delete=models.CASCADE)
+
+
+class AuthorDatail(models.Model):
+    nid = models.AutoField(primary_key=True)
+    telephone = models.BigIntegerField()
+    birthday = models.DateField()
+    addr = models.CharField(max_length=64)
+
+
+class Publish(models.Model):
+    nid = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+    city = models.CharField(max_length=32)
+    email = models.EmailField()
+
+    def __str__(self):
+        return self.name
+
+    def test(self):
+        return self.email
+# =====================================================================================
+urlpatterns = [
+    url(r'^admin/', admin.site.urls),
+    url(r'^login/', views.Login.as_view()),
+    # url(r'^books/', views.Books.as_view()),
+    url(r'^authors/', views.Authors.as_view()),
+    url(r'^users/', views.User.as_view()),
+
+    url(r'^books/$', views.Book.as_view({'get': 'list', 'post': 'create'})),
+    url(r'^books/(?P<pk>\d+)/$',views.Book.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'})),
+]
+
+
+setting.py中配置
+
+STATIC_URL = '/static/'
+
+
+REST_FRAMEWORK={
+    # 'DEFAULT_AUTHENTICATION_CLASSES':['app01.MyAuth.LoginAuth',],
+    # 'DEFAULT_PERMISSION_CLASSES':['app01.MyAuth.UserPermission',]
+}
+password='123'
+# =====================================================================================
+MyAuth.py中
+
+from app01 import models
+from rest_framework import exceptions
+from rest_framework.authentication import BaseAuthentication
+
+# 用drf的认证,写一个类
+# class LoginAuth(BaseAuthentication):
+#     # 函数名一定要叫authenticate,接收必须两个参数,第二个参数是request对象
+#     def authenticate(self, request):
+#         # 从request对象中取出token(也可以从其它地方取)
+#         token = request.query_params.get('token')
+#         # 去数据库过滤,查询
+#         ret = models.UserToken.objects.filter(token=token).first()
+#         if ret:
+#             # 能查到,说明认证通过,返回空
+#             # ret.user就是当前登录用户对象
+#             return ret.user, ret
+#         # 如果查不到,抛异常
+#         raise exceptions.APIException('您认证失败')
+import hashlib
+from day98 import settings
+
+def check_token(token):
+    ret = True
+    user_info=None
+    try:
+        ll = token.split('|')
+        # "eef48b787e24381258aa71d0d53615c2,{\"name\": \"lqz\", \"id\": 1}"
+        md5 = hashlib.md5()
+        md5.update(ll[1].encode('utf-8'))
+        md5.update(settings.password.encode('utf-8'))
+        hex = md5.hexdigest()
+        if not hex == ll[0]:
+            ret = False
+        else:
+            user_info=ll[1]
+    except Exception as e:
+        ret = False
+    return ret,user_info
+
+
+class LoginAuth(BaseAuthentication):
+    # 函数名一定要叫authenticate,接收必须两个参数,第二个参数是request对象
+    def authenticate(self, request):
+        # 从request对象中取出token(也可以从其它地方取)
+        token = request.query_params.get('token')
+        # ret 是布尔类型,表示验证通过或失败,user_info是user的字典
+        ret, user_info = check_token(token)
+        if ret:
+            return user_info, None
+        # 如果查不到,抛异常
+        raise exceptions.APIException('您认证失败')
+
+
+from rest_framework.permissions import BasePermission
+
+
+class UserPermission(BasePermission):
+    # message是出错显示的中文
+    message = '您没有权限查看'
+
+    def has_permission(self, request, view):
+        user_type = request.user.user_type
+        # 取出用户类型对应的文字
+        # 固定用法:get_字段名字_display()
+        user_type_name = request.user.get_user_type_display()
+        print(user_type_name)
+        if user_type == 2:
+            return True
+        else:
+            return False
+# =====================================================================================，
+MySerializer.py中
+
+from rest_framework import serializers
+from app01 import models
+
+
+class BookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Book
+        fields='__all__'
+
+class AuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Author
+        fields='__all__'
+
+
+class UserSer(serializers.ModelSerializer):
+    class Meta:
+        model = models.UserInfo
+        fields='__all__'
+
+    # user_type=serializers.CharField(source='get_user_type_display')
+    user_type=serializers.SerializerMethodField()
+    def get_user_type(self,obj):
+        return obj.get_user_type_display()
+
+# =====================================================================================
+视图层Views.py中
+
+from django.shortcuts import render
+from rest_framework.views import APIView
+from app01 import models
+from django.core.exceptions import ObjectDoesNotExist
+import hashlib
+import time
+from django.http import JsonResponse
+from app01 import MySerializer
+
+
+# Create your views here.
+
+def get_token(name):
+    # 生成一个md5对象
+    md5 = hashlib.md5()
+    # 往里添加值,必须是bytes格式
+    # time.time()生成时间戳类型,转成字符串,再encode转成bytes格式
+    md5.update(str(time.time()).encode('utf-8'))
+    md5.update(name.encode('utf-8'))
+    return md5.hexdigest()
+
+
+# # 登录
+# class Login(APIView):
+#     authentication_classes = []
+#     def post(self, request, *args, **kwargs):
+#         response = {'status': 100, 'msg': '登录成功'}
+#         name = request.data.get('name')
+#         pwd = request.data.get('pwd')
+#         try:
+#             user = models.UserInfo.objects.get(name=name, pwd=pwd)
+#             # 校验通过,登录成功,生成一个随机字符串(身份标识)token
+#             token = get_token(name)
+#             # 保存到数据库
+#             # update_or_create更新或者创建
+#             models.UserToken.objects.update_or_create(user=user, defaults={'token': token})
+#             response['token'] = token
+#         except ObjectDoesNotExist as e:
+#             response['status'] = 101
+#             response['msg'] = '用户名或密码错误'
+#         except Exception as e:
+#             response['status'] = 102
+#             # response['msg']='未知错误'
+#             response['msg'] = str(e)
+#         return JsonResponse(response, safe=False)
+
+
+from rest_framework import exceptions
+
+# class Books(APIView):
+#     def get(self, request, *args, **kwargs):
+#         response = {'status': 100, 'msg': '查询成功'}
+#         # 必须登录以后,才能获取数据
+#         # 取出token,取数据库验证,是否登录
+#         token = request.query_params.get('token')
+#         ret = models.UserToken.objects.filter(token=token)
+#         if ret:
+#             # 认证通过,是登录用户
+#             ret = models.Book.objects.all()
+#             book_ser = MySerializer.BookSerializer(ret, many=True)
+#             response['data'] = book_ser.data
+#         else:
+#             response['status'] = 101
+#             response['msg'] = '认证不通过'
+#
+#         return JsonResponse(response, safe=False)
+import json
+from day98 import settings
+
+
+def create_token(user_id):
+    md5 = hashlib.md5()
+    md5.update(user_id.encode('utf-8'))
+    md5.update(settings.password.encode('utf-8'))
+    hex = md5.hexdigest()
+    token = hex + '|' + user_id
+    print(token)
+    return token
+
+
+# 登录
+class Login(APIView):
+    authentication_classes = []
+
+    def post(self, request, *args, **kwargs):
+        response = {'status': 100, 'msg': '登录成功'}
+        name = request.data.get('name')
+        pwd = request.data.get('pwd')
+        try:
+            user = models.UserInfo.objects.get(name=name, pwd=pwd)
+            user_info_json = json.dumps({'name': user.name, 'id': user.pk})
+            # 生产dafgasdewf|{'name':user.name,'id':user.pk}的token
+            token = create_token(str(user.pk))
+            # 保存到数据库
+            # update_or_create更新或者创建
+            response['token'] = token
+        except ObjectDoesNotExist as e:
+            response['status'] = 101
+            response['msg'] = '用户名或密码错误'
+        except Exception as e:
+            response['status'] = 102
+            # response['msg']='未知错误'
+            response['msg'] = str(e)
+        return JsonResponse(response, safe=False)
+
+
+from rest_framework.request import Request
+from app01.MyAuth import LoginAuth
+
+
+# class Books(APIView):
+#     # 列表中,类名不能加括号
+#     authentication_classes = [LoginAuth, ]
+#
+#     def get(self, request, *args, **kwargs):
+#         # 只要通过认证,就能取到当前登录用户对象
+#         print(request.user)
+#         response = {'status': 100, 'msg': '查询成功'}
+#         ret = models.Book.objects.all()
+#         book_ser = MySerializer.BookSerializer(ret, many=True)
+#         response['data'] = book_ser.data
+#         return JsonResponse(response, safe=False)
+
+
+# 需求,只能超级用户来查看作者详情,其他人不能看
+from app01.MyAuth import UserPermission
+
+
+class Authors(APIView):
+    # permission_classes=[UserPermission,]
+    # 局部禁用:
+    permission_classes = []
+
+    def get(self, request, *args, **kwargs):
+        response = {'status': 100, 'msg': '查询成功'}
+        ret = models.Author.objects.all()
+        ser = MySerializer.AuthorSerializer(ret, many=True)
+        response['data'] = ser.data
+        return JsonResponse(response, safe=False)
+
+
+class User(APIView):
+    def get(self, request, *args, **kwargs):
+        response = {'status': 100, 'msg': '查询成功'}
+        ret = models.UserInfo.objects.all()
+        ser = MySerializer.UserSer(ret, many=True)
+        response['data'] = ser.data
+        return JsonResponse(response, safe=False)
+
+
+
+from rest_framework.viewsets import ModelViewSet
+class Book(ModelViewSet):
+    queryset=models.Book.objects.all()
+    serializer_class=MySerializer.BookSerializer
+# =====================================================================================
